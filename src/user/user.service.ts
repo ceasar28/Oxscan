@@ -13,9 +13,6 @@ export class UserService {
     @InjectModel(Transaction.name)
     private readonly TransactionModel: Model<Transaction>,
   ) {
-    this.UserModel.deleteOne({
-      wallet: '0xae2Fc483527B8EF99EB5D9B44875F005ba1FaE13'.toLowerCase(),
-    });
     this.seedDatabase();
   }
 
@@ -202,16 +199,10 @@ export class UserService {
         chains: ['eth', 'bsc', 'base'],
       };
 
-      // Check if the user already exists
-      const existingUser = await this.UserModel.findOne({
+      // Check if the user already exists and delete
+      await this.UserModel.deleteOne({
         wallet: dummyUser.wallet,
       });
-      if (existingUser) {
-        console.log(
-          `User with wallet ${dummyUser.wallet} already exists, skipping seeding`,
-        );
-        return;
-      }
 
       // Create and save the dummy user
       const newUser = new this.UserModel(dummyUser);
