@@ -17,6 +17,11 @@ export class UserDto {
   @IsOptional()
   twitter?: string;
 
+  @ApiProperty({ description: 'Twitter handle of the user' })
+  @IsString()
+  @IsOptional()
+  imageUrl?: string;
+
   @ApiProperty({ description: 'Telegram handle of the user' })
   @IsString()
   @IsOptional()

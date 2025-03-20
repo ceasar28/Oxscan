@@ -15,6 +15,9 @@ export class User {
   twitter: string;
 
   @Prop()
+  imageUrl: string;
+
+  @Prop()
   telegram: string;
 
   @Prop()
