@@ -3,12 +3,21 @@ import { UserDto } from './dto/user.dto';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { User } from 'src/database/schemas/user.schema';
+import { TransactionDto } from 'src/socket/dto/transaction.dto';
+import { Transaction } from 'src/database/schemas/transactions.schema';
 
 @Injectable()
 export class UserService {
   constructor(
     @InjectModel(User.name) private readonly UserModel: Model<User>,
-  ) {}
+    @InjectModel(Transaction.name)
+    private readonly TransactionModel: Model<Transaction>,
+  ) {
+    this.UserModel.deleteOne({
+      wallet: '0xae2Fc483527B8EF99EB5D9B44875F005ba1FaE13'.toLowerCase(),
+    });
+    this.seedDatabase();
+  }
 
   // Create a new user
   async newUser(userDto: UserDto): Promise<UserDto> {
@@ -120,6 +129,87 @@ export class UserService {
       };
     } catch (error: any) {
       console.error('Error fetching user:', error.message || error);
+      throw error;
+    }
+  }
+
+  async getAUsersTransactions(
+    walletAddress: string,
+  ): Promise<TransactionDto[]> {
+    try {
+      const transactions = await this.TransactionModel.find({
+        wallet: walletAddress.toLowerCase(),
+      }).exec();
+
+      if (!transactions || transactions.length === 0) {
+        console.log(`No transactions found for wallet: ${walletAddress}`);
+        return []; // Return empty array if no transactions
+      }
+
+      // Map transactions to TransactionDto
+      return transactions.map((tx) => ({
+        wallet: tx.wallet,
+        chain: tx.chain,
+        type: tx.type,
+        txHash: tx.txHash,
+        txIndex: tx.txIndex,
+        blockTimestamp: tx.blockTimestamp,
+        tokenOutSymbol: tx.tokenOutSymbol,
+        tokenOutName: tx.tokenOutName,
+        tokenOutLogo: tx.tokenOutLogo,
+        tokenOutAddress: tx.tokenOutAddress,
+        tokenOutAmount: tx.tokenOutAmount,
+        tokenOutAmountUsd: tx.tokenOutAmountUsd,
+        tokenInSymbol: tx.tokenInSymbol,
+        tokenInName: tx.tokenInName,
+        tokenInLogo: tx.tokenInLogo,
+        tokenInAddress: tx.tokenInAddress,
+        tokenInAmount: tx.tokenInAmount,
+        tokenInAmountUsd: tx.tokenInAmountUsd,
+      }));
+    } catch (error: any) {
+      console.error(
+        'Error fetching transactions for wallet:',
+        walletAddress,
+        error.message || error,
+      );
+      throw error;
+    }
+  }
+
+  // New method to seed the database
+  async seedDatabase(): Promise<void> {
+    try {
+      const dummyUser = {
+        name: 'Dummy User',
+        wallet: '0xae2Fc483527B8EF99EB5D9B44875F005ba1FaE13'.toLowerCase(),
+        twitter: '@dummyuser',
+        telegram: '@dummyuser_telegram',
+        website: 'https://dummyuser.com',
+        profit: '1000',
+        loss: '200',
+      };
+
+      // Check if the user already exists
+      const existingUser = await this.UserModel.findOne({
+        wallet: dummyUser.wallet,
+      });
+      if (existingUser) {
+        console.log(
+          `User with wallet ${dummyUser.wallet} already exists, skipping seeding`,
+        );
+        return;
+      }
+
+      // Create and save the dummy user
+      const newUser = new this.UserModel(dummyUser);
+      await newUser.save();
+
+      console.log(
+        `Successfully seeded database with dummy user: ${dummyUser.wallet}`,
+      );
+    } catch (error: any) {
+      console.error('Error seeding database:', error.message || error);
       throw error;
     }
   }

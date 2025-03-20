@@ -9,6 +9,9 @@ export class Transaction {
   wallet: string;
 
   @Prop()
+  chain: string;
+
+  @Prop()
   type: string;
 
   @Prop()
@@ -27,6 +30,9 @@ export class Transaction {
   tokenOutName: string;
 
   @Prop()
+  tokenOutLogo: string;
+
+  @Prop()
   tokenOutAddress: string;
 
   @Prop()
@@ -40,6 +46,9 @@ export class Transaction {
 
   @Prop()
   tokenInName: string;
+
+  @Prop()
+  tokenInLogo: string;
 
   @Prop()
   tokenInAddress: string;

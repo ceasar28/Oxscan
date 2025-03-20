@@ -14,6 +14,11 @@ export class TransactionDto {
   @IsNotEmpty()
   type: string;
 
+  @ApiProperty({ description: 'chain, where transaction was performed' })
+  @IsString()
+  @IsNotEmpty()
+  chain: string;
+
   @ApiProperty({ description: 'Transaction hash (unique identifier)' })
   @IsString()
   @IsNotEmpty()
@@ -41,6 +46,11 @@ export class TransactionDto {
   @IsNotEmpty()
   tokenOutName: string;
 
+  @ApiProperty({ description: 'Token logo' })
+  @IsString()
+  @IsNotEmpty()
+  tokenOutLogo: string;
+
   @ApiProperty({ description: 'Address of the token being sold' })
   @IsString()
   @IsNotEmpty()
@@ -65,6 +75,11 @@ export class TransactionDto {
   @IsString()
   @IsNotEmpty()
   tokenInName: string;
+
+  @ApiProperty({ description: 'Token logo' })
+  @IsString()
+  @IsNotEmpty()
+  tokenInLogo: string;
 
   @ApiProperty({ description: 'Address of the token being bought' })
   @IsString()
