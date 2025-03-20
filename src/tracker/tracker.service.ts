@@ -403,16 +403,57 @@ export class TrackerService {
   }
 
   // Helper method to track transactions for a single user across all chains
-  private async trackUserTransactions(wallet: string): Promise<void> {
-    try {
-      console.log(`Tracking transactions for wallet: ${wallet}`);
+  // private async trackUserTransactions(wallet: string): Promise<void> {
+  //   try {
+  //     console.log(`Tracking transactions for wallet: ${wallet}`);
 
-      // Call all three tracking functions simultaneously for this wallet
-      await Promise.all([
-        this.trackEthTransactions(wallet),
-        this.trackBscTransactions(wallet),
-        this.trackBaseTransactions(wallet),
-      ]);
+  //     // Call all three tracking functions simultaneously for this wallet
+  //     await Promise.all([
+  //       this.trackEthTransactions(wallet),
+  //       this.trackBscTransactions(wallet),
+  //       this.trackBaseTransactions(wallet),
+  //     ]);
+
+  //     console.log(`Completed tracking for wallet: ${wallet}`);
+  //   } catch (error: any) {
+  //     console.error(
+  //       `Error tracking transactions for wallet ${wallet}:`,
+  //       error.message || error,
+  //     );
+  //     // Don’t throw here to allow other users’ tracking to continue
+  //   }
+  // }
+
+  private async trackUserTransactions(
+    wallet: string,
+    chains: string[],
+  ): Promise<void> {
+    // If chains array is empty, return early
+    if (!chains || chains.length === 0) {
+      console.log(`No chains specified for wallet: ${wallet}`);
+      return;
+    }
+
+    try {
+      console.log(
+        `Tracking transactions for wallet: ${wallet} on chains: ${chains.join(', ')}`,
+      );
+
+      // Create array of tracking promises based on specified chains
+      const trackingPromises = [];
+
+      if (chains.includes('eth')) {
+        trackingPromises.push(this.trackEthTransactions(wallet));
+      }
+      if (chains.includes('bsc')) {
+        trackingPromises.push(this.trackBscTransactions(wallet));
+      }
+      if (chains.includes('base')) {
+        trackingPromises.push(this.trackBaseTransactions(wallet));
+      }
+
+      // Execute all applicable tracking functions simultaneously
+      await Promise.all(trackingPromises);
 
       console.log(`Completed tracking for wallet: ${wallet}`);
     } catch (error: any) {
@@ -426,7 +467,6 @@ export class TrackerService {
 
   async trackAllUsersTransactions(): Promise<void> {
     try {
-      console.log('Fetching all users...');
       const users = await this.UserModel.find().exec();
       if (!users || users.length === 0) {
         console.log('No users found');
@@ -437,7 +477,7 @@ export class TrackerService {
 
       // Process all users simultaneously
       const userPromises = users.map((user) =>
-        this.trackUserTransactions(user.wallet),
+        this.trackUserTransactions(user.wallet, user.chains),
       );
 
       // Wait for all users' tracking to complete

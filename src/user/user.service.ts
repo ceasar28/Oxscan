@@ -37,6 +37,8 @@ export class UserService {
         twitter: userDto.twitter,
         telegram: userDto.telegram,
         website: userDto.website,
+        chains: userDto.chains,
+        imageUrl: userDto.imageUrl,
         profit: userDto.profit || '0',
         loss: userDto.loss || '0',
       });
@@ -50,6 +52,8 @@ export class UserService {
         twitter: savedUser.twitter,
         telegram: savedUser.telegram,
         website: savedUser.website,
+        chains: savedUser.chains,
+        imageUrl: savedUser.imageUrl,
       };
     } catch (error: any) {
       console.error('Error saving user:', error.message || error);
@@ -77,6 +81,8 @@ export class UserService {
       if (userDto.website !== undefined) user.website = userDto.website;
       if (userDto.profit !== undefined) user.profit = userDto.profit;
       if (userDto.loss !== undefined) user.loss = userDto.loss;
+      if (userDto.imageUrl !== undefined) user.imageUrl = userDto.imageUrl;
+      if (userDto.chains !== undefined) user.chains = userDto.chains;
 
       const updatedUser = await user.save();
 
@@ -86,6 +92,8 @@ export class UserService {
         twitter: updatedUser.twitter,
         telegram: updatedUser.telegram,
         website: updatedUser.website,
+        chains: updatedUser.chains,
+        imageUrl: updatedUser.imageUrl,
       };
     } catch (error: any) {
       console.error('Error updating user:', error.message || error);
@@ -103,6 +111,8 @@ export class UserService {
         twitter: user.twitter,
         telegram: user.telegram,
         website: user.website,
+        chains: user.chains,
+        imageUrl: user.imageUrl,
       }));
     } catch (error: any) {
       console.error('Error fetching all users:', error.message || error);
@@ -126,6 +136,8 @@ export class UserService {
         twitter: user.twitter,
         telegram: user.telegram,
         website: user.website,
+        chains: user.chains,
+        imageUrl: user.imageUrl,
       };
     } catch (error: any) {
       console.error('Error fetching user:', error.message || error);
@@ -186,8 +198,8 @@ export class UserService {
         twitter: '@dummyuser',
         telegram: '@dummyuser_telegram',
         website: 'https://dummyuser.com',
-        profit: '1000',
-        loss: '200',
+        imageUrl: 'https://dummyuser.com',
+        chains: ['eth', 'bsc', 'base'],
       };
 
       // Check if the user already exists

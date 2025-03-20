@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsArray } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger'; // Optional: for Swagger documentation
 
 export class UserDto {
@@ -26,6 +26,14 @@ export class UserDto {
   @IsString()
   @IsOptional()
   telegram?: string;
+
+  @ApiProperty({
+    description: 'List of chains the user is active on',
+    example: ['eth', 'bsc', 'base'],
+  })
+  @IsArray()
+  @IsOptional()
+  chains?: string[];
 
   @ApiProperty({ description: 'Website URL of the user' })
   @IsString()

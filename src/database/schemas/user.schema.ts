@@ -24,6 +24,9 @@ export class User {
   website: string;
 
   @Prop()
+  chains: string[];
+
+  @Prop()
   profit: string;
 
   @Prop()
