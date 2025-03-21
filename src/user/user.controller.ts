@@ -67,6 +67,39 @@ export class UserController {
     );
   }
 
+  // Fetch PNL leaderboard for all users on a given chain
+  @Get('pnl-leaderboard')
+  async getPnlLeaderBoard(@Query('chain') chain: string): Promise<
+    {
+      name: string;
+      wallet: string;
+      twitter: string;
+      telegram: string;
+      website: string;
+      chains: string[];
+      imageUrl: string;
+      pnlSummary: {
+        totalTradesCount: number;
+        totalPnlUSD: string;
+        totalPnlPercentage: number;
+        totalBuys: number;
+        totalSells: number;
+        totalBuysUSD: string;
+        totalSellsUSD: string;
+      };
+    }[]
+  > {
+    if (!chain) {
+      throw new BadRequestException('Chain parameter is required');
+    }
+
+    const leaderboard = await this.userService.getPnlLeaderBoard(chain);
+    if (!leaderboard || leaderboard.length === 0) {
+      throw new NotFoundException(`No PNL data found for chain ${chain}`);
+    }
+    return leaderboard;
+  }
+
   // Fetch a single user by wallet
   @Get(':wallet')
   async getUser(@Param('wallet') wallet: string): Promise<UserDto> {
@@ -102,6 +135,7 @@ export class UserController {
   async getUserTokensPnl(
     @Param('wallet') wallet: string,
     @Query('chain') chain: string,
+    @Query('duration') duration: string,
     @Query('tokens') tokens: string, // Expecting a comma-separated string of token addresses
   ): Promise<
     {
@@ -119,6 +153,7 @@ export class UserController {
       pnlPercentage: number;
     }[]
   > {
+    console.log(duration);
     if (!chain) {
       throw new BadRequestException('Chain parameter is required');
     }
@@ -132,6 +167,7 @@ export class UserController {
       wallet,
       chain,
       tokenArray,
+      duration,
     );
     if (!results || results.length === 0) {
       throw new NotFoundException(

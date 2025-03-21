@@ -11,6 +11,7 @@ import { TransactionDto } from 'src/socket/dto/transaction.dto';
 import { Transaction } from 'src/database/schemas/transactions.schema';
 import { Call } from 'src/database/schemas/moralisCalls.schema';
 import { HttpService } from '@nestjs/axios';
+import { firstValueFrom } from 'rxjs';
 
 @Injectable()
 export class UserService {
@@ -500,6 +501,7 @@ export class UserService {
     wallet: string,
     chain: string,
     tokens: string[],
+    timeFrame?: string,
   ): Promise<
     {
       tokenAddress: string;
@@ -548,7 +550,7 @@ export class UserService {
       }
       const pnlUrl = `https://deep-index.moralis.io/api/v2.2/wallets/${wallet}/profitability`;
 
-      const params = { chain: chain };
+      const params = { chain: chain, days: timeFrame || 'all' };
       tokens.forEach((token, index) => {
         params[`token_addresses[${index}]`] = token;
       });
@@ -559,6 +561,7 @@ export class UserService {
       });
 
       const results = response.data.result || [];
+      console.log(results);
       return results.map((token) => ({
         tokenAddress: token.token_address,
         tokenName: token.name,
@@ -647,6 +650,169 @@ export class UserService {
         'Error fetching user top  Holdings:',
         error.message || error,
       );
+      throw error;
+    }
+  }
+
+  async getPnlLeaderBoard(chain: string): Promise<
+    {
+      name: string;
+      wallet: string;
+      twitter: string;
+      telegram: string;
+      website: string;
+      chains: string[];
+      imageUrl: string;
+      pnlSummary: {
+        totalTradesCount: number;
+        totalPnlUSD: string;
+        totalPnlPercentage: number;
+        totalBuys: number;
+        totalSells: number;
+        totalBuysUSD: string;
+        totalSellsUSD: string;
+      };
+    }[]
+  > {
+    try {
+      if (!chain) {
+        throw new BadRequestException('Chain parameter is required');
+      }
+
+      // Fetch all users from UserModel
+      const users = await this.UserModel.find().exec();
+      if (!users || users.length === 0) {
+        console.log('No users found');
+        return [];
+      }
+
+      // API keys
+      const apiKeys = [
+        process.env.MORALIS_API_1,
+        process.env.MORALIS_API_2,
+        process.env.MORALIS_API_3,
+        process.env.MORALIS_API_4,
+        process.env.MORALIS_API_5,
+        process.env.MORALIS_API_6,
+      ].filter(Boolean);
+      if (apiKeys.length === 0) {
+        throw new Error('No valid Moralis API keys available');
+      }
+
+      // API key rotation state
+      let currentKeyIndex = 0;
+
+      // Default PNL summary for failed calls
+      const defaultPnlSummary = {
+        totalTradesCount: 0,
+        totalPnlUSD: '0',
+        totalPnlPercentage: 0,
+        totalBuys: 0,
+        totalSells: 0,
+        totalBuysUSD: '0',
+        totalSellsUSD: '0',
+      };
+
+      // Fetch PNL summary for each user with key rotation
+      const pnlPromises = users.map(async (user) => {
+        const url = `https://deep-index.moralis.io/api/v2.2/wallets/${user.wallet}/profitability/summary`;
+        const params = { chain: chain };
+        let attempt = 0;
+        const maxAttempts = apiKeys.length;
+
+        while (attempt < maxAttempts) {
+          try {
+            // const response = await firstValueFrom(
+            //   this.httpService.get(url, {
+            //     params,
+            //     headers: { 'X-API-Key': apiKeys[currentKeyIndex] },
+            //   }),
+            // );
+            const response = await firstValueFrom(
+              this.httpService.get(url, {
+                params,
+                headers: { 'X-API-Key': apiKeys[4] },
+              }),
+            );
+            const summary = response.data || {};
+
+            // Rotate to next key after successful call
+            currentKeyIndex = (currentKeyIndex + 1) % apiKeys.length;
+
+            return {
+              name: user.name || 'Unknown',
+              wallet: user.wallet,
+              twitter: user.twitter || '',
+              telegram: user.telegram || '',
+              website: user.website || '',
+              chains: user.chains || [],
+              imageUrl: user.imageUrl || '',
+              pnlSummary: {
+                totalTradesCount: summary.total_count_of_trades || 0,
+                totalPnlUSD: summary.total_realized_profit_usd || '0',
+                totalPnlPercentage:
+                  summary.total_realized_profit_percentage || 0,
+                totalBuys: summary.total_buys || 0,
+                totalSells: summary.total_sells || 0,
+                totalBuysUSD: summary.total_bought_volume_usd || '0',
+                totalSellsUSD: summary.total_sold_volume_usd || '0',
+              },
+            };
+          } catch (error) {
+            console.error(
+              `Attempt ${attempt + 1} failed for wallet ${user.wallet} with key ${currentKeyIndex}:`,
+              error.message,
+            );
+            attempt++;
+            currentKeyIndex = (currentKeyIndex + 1) % apiKeys.length; // Rotate to next key on failure
+
+            if (attempt === maxAttempts) {
+              console.warn(`All API keys exhausted for wallet ${user.wallet}`);
+              return {
+                name: user.name || 'Unknown',
+                wallet: user.wallet,
+                twitter: user.twitter || '',
+                telegram: user.telegram || '',
+                website: user.website || '',
+                chains: user.chains || [],
+                imageUrl: user.imageUrl || '',
+                pnlSummary: defaultPnlSummary, // Return default on final failure
+              };
+            }
+          }
+        }
+        return {
+          // Fallback in case while loop logic fails (shouldn’t happen)
+          name: user.name || 'Unknown',
+          wallet: user.wallet,
+          twitter: user.twitter || '',
+          telegram: user.telegram || '',
+          website: user.website || '',
+          chains: user.chains || [],
+          imageUrl: user.imageUrl || '',
+          pnlSummary: defaultPnlSummary,
+        };
+      });
+
+      // Wait for all PNL requests to complete
+      const leaderboard = await Promise.all(pnlPromises);
+
+      // Filter out users with empty PNL data (zero trades)
+      const filteredLeaderboard = leaderboard.filter(
+        (entry) => entry.pnlSummary.totalTradesCount > 0,
+      );
+
+      console.log(filteredLeaderboard);
+      // Sort by totalPnlUSD (descending order)
+      filteredLeaderboard.sort((a, b) => {
+        const pnlA = parseFloat(a.pnlSummary.totalPnlUSD);
+        const pnlB = parseFloat(b.pnlSummary.totalPnlUSD);
+        return pnlB - pnlA; // Descending order
+      });
+
+      return filteredLeaderboard;
+    } catch (error: any) {
+      console.error('Error fetching PNL leaderboard:', error.message || error);
       throw error;
     }
   }
