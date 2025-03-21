@@ -50,7 +50,7 @@ export class UserController {
   async getUserTransactions(
     @Param('wallet') wallet: string,
   ): Promise<TransactionDto[]> {
-    return this.userService.getAUsersTransactions(wallet);
+    return this.userService.getAUsersTransactions(wallet, 'eth');
   }
 
   // Seed the database (optional endpoint)
