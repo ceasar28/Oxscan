@@ -188,11 +188,75 @@ export class UserService {
 
   // New method to seed the database
 
+  // async getAUsersTransactions(
+  //   walletAddress: string,
+  //   chain?: string, // Optional chain parameter
+  // ): Promise<TransactionDto[]> {
+  //   try {
+  //     // Build the query object
+  //     const query: any = {
+  //       wallet: walletAddress.toLowerCase(),
+  //     };
+
+  //     // If chain is provided, add it to the query
+  //     if (chain) {
+  //       query.chain = chain;
+  //     }
+
+  //     const transactions = await this.TransactionModel.find(query)
+  //       .sort({ blockTimestamp: -1 }) // Sort by timestamp, descending (newest first)
+  //       .limit(50) // Limit to 50 records
+  //       .exec();
+
+  //     if (!transactions || transactions.length === 0) {
+  //       console.log(
+  //         `No transactions found for wallet: ${walletAddress}` +
+  //           (chain ? ` on chain: ${chain}` : ''),
+  //       );
+  //       return []; // Return empty array if no transactions
+  //     }
+
+  //     // Map transactions to TransactionDto
+  //     return transactions.map((tx) => ({
+  //       wallet: tx.wallet,
+  //       chain: tx.chain,
+  //       type: tx.type,
+  //       txHash: tx.txHash,
+  //       txIndex: tx.txIndex,
+  //       blockTimestamp: tx.blockTimestamp,
+  //       tokenOutSymbol: tx.tokenOutSymbol,
+  //       tokenOutName: tx.tokenOutName,
+  //       tokenOutLogo: tx.tokenOutLogo,
+  //       tokenOutAddress: tx.tokenOutAddress,
+  //       tokenOutAmount: tx.tokenOutAmount,
+  //       tokenOutAmountUsd: tx.tokenOutAmountUsd,
+  //       tokenInSymbol: tx.tokenInSymbol,
+  //       tokenInName: tx.tokenInName,
+  //       tokenInLogo: tx.tokenInLogo,
+  //       tokenInAddress: tx.tokenInAddress,
+  //       tokenInAmount: tx.tokenInAmount,
+  //       tokenInAmountUsd: tx.tokenInAmountUsd,
+  //     }));
+  //   } catch (error: any) {
+  //     console.error(
+  //       'Error fetching transactions for wallet:',
+  //       walletAddress,
+  //       chain ? `on chain: ${chain}` : '',
+  //       error.message || error,
+  //     );
+  //     throw error;
+  //   }
+  // }
+
   async getAUsersTransactions(
     walletAddress: string,
     chain?: string, // Optional chain parameter
+    limit: number = 50, // Optional limit parameter with default of 50
   ): Promise<TransactionDto[]> {
     try {
+      // Ensure limit doesn't exceed 50
+      const cappedLimit = Math.min(limit, 50);
+
       // Build the query object
       const query: any = {
         wallet: walletAddress.toLowerCase(),
@@ -205,7 +269,7 @@ export class UserService {
 
       const transactions = await this.TransactionModel.find(query)
         .sort({ blockTimestamp: -1 }) // Sort by timestamp, descending (newest first)
-        .limit(50) // Limit to 50 records
+        .limit(cappedLimit) // Use the capped limit
         .exec();
 
       if (!transactions || transactions.length === 0) {
@@ -242,6 +306,7 @@ export class UserService {
         'Error fetching transactions for wallet:',
         walletAddress,
         chain ? `on chain: ${chain}` : '',
+        `limit: ${limit}`,
         error.message || error,
       );
       throw error;
