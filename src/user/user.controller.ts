@@ -10,6 +10,7 @@ import {
   Query,
   BadRequestException,
   NotFoundException,
+  Delete,
 } from '@nestjs/common';
 import { UserService } from './user.service'; // Adjust path
 import { UserDto } from './dto/user.dto'; // Adjust path
@@ -34,6 +35,14 @@ export class UserController {
     @Body() userDto: Partial<UserDto>,
   ): Promise<UserDto> {
     return this.userService.updateUser(wallet, userDto);
+  }
+
+  // Delete a user by wallet address
+  @Delete(':wallet')
+  async deleteUser(
+    @Param('wallet') wallet: string,
+  ): Promise<{ message: string }> {
+    return this.userService.deleteUser(wallet);
   }
 
   // Fetch all users

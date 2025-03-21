@@ -107,6 +107,25 @@ export class UserService {
     }
   }
 
+  // Delete a user by wallet address
+  async deleteUser(wallet: string): Promise<{ message: string }> {
+    try {
+      const user = await this.UserModel.findOne({
+        wallet: wallet.toLowerCase(),
+      });
+      if (!user) {
+        throw new NotFoundException(`User with wallet ${wallet} not found`);
+      }
+
+      await user.deleteOne(); // or user.remove() depending on your Mongoose version
+
+      return { message: `User with wallet ${wallet} deleted successfully` };
+    } catch (error: any) {
+      console.error('Error deleting user:', error.message || error);
+      throw error;
+    }
+  }
+
   // Fetch all users
   async getAllUsers(): Promise<UserDto[]> {
     try {
