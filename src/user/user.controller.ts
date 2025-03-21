@@ -7,6 +7,7 @@ import {
   Patch,
   UsePipes,
   ValidationPipe,
+  Query,
 } from '@nestjs/common';
 import { UserService } from './user.service'; // Adjust path
 import { UserDto } from './dto/user.dto'; // Adjust path
@@ -46,11 +47,27 @@ export class UserController {
   }
 
   // Fetch a user's transactions
+  //   @Get(':wallet/transactions')
+  //   async getUserTransactions(
+  //     @Param('wallet') wallet: string,
+  //   ): Promise<TransactionDto[]> {
+  //     return this.userService.getAUsersTransactions(wallet, 'eth', 3);
+  //   }
+
+  // Fetch a user's transactions
   @Get(':wallet/transactions')
   async getUserTransactions(
     @Param('wallet') wallet: string,
+    @Query('chain') chain?: string,
+    @Query('limit') limit?: string,
   ): Promise<TransactionDto[]> {
-    return this.userService.getAUsersTransactions(wallet, 'eth', 3);
+    const transactionLimit = limit ? parseInt(limit, 10) : undefined;
+
+    return this.userService.getAUsersTransactions(
+      wallet,
+      chain,
+      transactionLimit,
+    );
   }
 
   // Seed the database (optional endpoint)
