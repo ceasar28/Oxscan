@@ -122,7 +122,6 @@ export class UserController {
     if (!chain) {
       throw new BadRequestException('Chain parameter is required');
     }
-
     // Convert comma-separated tokens string to array
     const tokenArray = tokens ? tokens.split(',').map((t) => t.trim()) : [];
     if (tokenArray.length === 0) {
@@ -137,6 +136,33 @@ export class UserController {
     if (!results || results.length === 0) {
       throw new NotFoundException(
         `No PNL data found for wallet ${wallet} on chain ${chain}`,
+      );
+    }
+    return results;
+  }
+
+  // Fetch a user's top token holdings
+  @Get(':wallet/top-holdings')
+  async getUserTopHoldings(
+    @Param('wallet') wallet: string,
+    @Query('chain') chain: string,
+  ): Promise<
+    {
+      tokenAddress: string;
+      tokenName: string;
+      tokenSymbol: string;
+      tokenBalance: string;
+      tokenBalanceUSD: number;
+    }[]
+  > {
+    if (!chain) {
+      throw new BadRequestException('Chain parameter is required');
+    }
+
+    const results = await this.userService.getUserTopHoldings(wallet, chain);
+    if (!results || results.length === 0) {
+      throw new NotFoundException(
+        `No token holdings found for wallet ${wallet} on chain ${chain}`,
       );
     }
     return results;

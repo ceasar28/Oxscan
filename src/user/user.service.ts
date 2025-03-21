@@ -9,12 +9,13 @@ import { Model } from 'mongoose';
 import { User } from 'src/database/schemas/user.schema';
 import { TransactionDto } from 'src/socket/dto/transaction.dto';
 import { Transaction } from 'src/database/schemas/transactions.schema';
-import Moralis from 'moralis';
 import { Call } from 'src/database/schemas/moralisCalls.schema';
+import { HttpService } from '@nestjs/axios';
 
 @Injectable()
 export class UserService {
   constructor(
+    private readonly httpService: HttpService,
     @InjectModel(User.name) private readonly UserModel: Model<User>,
     @InjectModel(Transaction.name)
     private readonly TransactionModel: Model<Transaction>,
@@ -498,7 +499,7 @@ export class UserService {
   async getUserTokensPnl(
     wallet: string,
     chain: string,
-    token: string[],
+    tokens: string[],
   ): Promise<
     {
       tokenAddress: string;
@@ -517,14 +518,14 @@ export class UserService {
   > {
     try {
       // Map chain names to chain IDs
-      const chainMap: { [key: string]: string } = {
-        eth: '0x1', // Ethereum
-        bsc: '0x38', // Binance Smart Chain
-        base: '0x2105', // Base
-      };
-      const chainNumber = chainMap[chain.toLowerCase()];
-      if (!chainNumber) {
-        throw new BadRequestException(`Unsupported chain: ${chain}`);
+      // const chainMap: { [key: string]: string } = {
+      //   eth: '0x1', // Ethereum
+      //   bsc: '0x38', // Binance Smart Chain
+      //   base: '0x2105', // Base
+      // };
+      // const chainNumber = chainMap[chain.toLowerCase()];
+      if (!chain) {
+        throw new BadRequestException(`Unsupported chain`);
       }
 
       // API key rotation
@@ -545,16 +546,19 @@ export class UserService {
       if (!currentApiKey) {
         throw new Error('No valid Moralis API key available');
       }
+      const pnlUrl = `https://deep-index.moralis.io/api/v2.2/wallets/${wallet}/profitability`;
 
-      await Moralis.start({ apiKey: currentApiKey });
-
-      const response = await Moralis.EvmApi.wallets.getWalletProfitability({
-        chain: chainNumber,
-        tokenAddresses: token,
-        address: wallet,
+      const params = { chain: chain };
+      tokens.forEach((token, index) => {
+        params[`token_addresses[${index}]`] = token;
       });
 
-      const results = response.raw.result || [];
+      const response = await this.httpService.axiosRef.get(pnlUrl, {
+        params: params,
+        headers: { 'X-API-Key': currentApiKey },
+      });
+
+      const results = response.data.result || [];
       return results.map((token) => ({
         tokenAddress: token.token_address,
         tokenName: token.name,
@@ -570,7 +574,79 @@ export class UserService {
         pnlPercentage: token.realized_profit_percentage,
       }));
     } catch (error: any) {
-      console.error('Error fetching user PNL:', error.message || error);
+      console.error('Error fetching user PNL:', error.code || error);
+      if (error.code === 'ERR_BAD_REQUEST') {
+        throw new BadRequestException('invalid data');
+      }
+      throw error.message;
+    }
+  }
+
+  async getUserTopHoldings(
+    wallet: string,
+    chain: string,
+  ): Promise<
+    {
+      tokenAddress: string;
+      tokenName: string;
+      tokenSymbol: string;
+      tokenBalance: string;
+      tokenBalanceUSD: number;
+    }[]
+  > {
+    try {
+      // // Map chain names to chain IDs
+      // const chainMap: { [key: string]: string } = {
+      //   eth: '0x1', // Ethereum
+      //   bsc: '0x38', // Binance Smart Chain
+      //   base: '0x2105', // Base
+      // };
+      // const chainNumber = chainMap[chain.toLowerCase()];
+      if (!chain) {
+        throw new BadRequestException(`Unsupported chain`);
+      }
+
+      // API key rotation
+      const apiKeys = [
+        process.env.MORALIS_API_1,
+        process.env.MORALIS_API_2,
+        process.env.MORALIS_API_3,
+        process.env.MORALIS_API_4,
+        process.env.MORALIS_API_5,
+        process.env.MORALIS_API_6,
+      ].filter(Boolean); // Remove undefined keys
+      //const apiKeyIndex = await this.CallModel.findOne();
+      // const keyIndex = apiKeyIndex?.call ?? 0; // Fallback to 0 if undefined
+
+      const keyIndex = 4;
+
+      const currentApiKey = apiKeys[keyIndex];
+      if (!currentApiKey) {
+        throw new Error('No valid Moralis API key available');
+      }
+
+      const topHoldingsUrl = `https://deep-index.moralis.io/api/v2.2/wallets/${wallet}/tokens`;
+
+      const params = { chain: chain, exclude_spam: true, limit: 2 };
+
+      const response = await this.httpService.axiosRef.get(topHoldingsUrl, {
+        params: params,
+        headers: { 'X-API-Key': currentApiKey },
+      });
+      const results = response.data.result || [];
+
+      return results.map((token) => ({
+        tokenAddress: token.token_address,
+        tokenName: token.name,
+        tokenSymbol: token.symbol,
+        tokenBalance: token.balance_formatted,
+        tokenBalanceUSD: token.usd_value,
+      }));
+    } catch (error: any) {
+      console.error(
+        'Error fetching user top  Holdings:',
+        error.message || error,
+      );
       throw error;
     }
   }

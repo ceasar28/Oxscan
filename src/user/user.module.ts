@@ -8,9 +8,11 @@ import {
   TransactionSchema,
 } from 'src/database/schemas/transactions.schema';
 import { Call, CallSchema } from 'src/database/schemas/moralisCalls.schema';
+import { HttpModule } from '@nestjs/axios';
 
 @Module({
   imports: [
+    HttpModule,
     MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
     MongooseModule.forFeature([
       { name: Transaction.name, schema: TransactionSchema },
