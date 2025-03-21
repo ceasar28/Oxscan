@@ -8,6 +8,8 @@ import {
   UsePipes,
   ValidationPipe,
   Query,
+  BadRequestException,
+  NotFoundException,
 } from '@nestjs/common';
 import { UserService } from './user.service'; // Adjust path
 import { UserDto } from './dto/user.dto'; // Adjust path
@@ -40,6 +42,31 @@ export class UserController {
     return this.userService.getAllUsers();
   }
 
+  // Fetch all users with their details and latest transactions
+  @Get('all-users-transactions')
+  async getAllUsersTransactions(
+    @Query('chain') chain?: string,
+    @Query('limit') limit?: string,
+  ): Promise<
+    {
+      name: string;
+      wallet: string;
+      twitter: string;
+      telegram: string;
+      website: string;
+      chains: string[];
+      imageUrl: string;
+      transactions: TransactionDto[];
+    }[]
+  > {
+    console.log('hereee');
+    const transactionLimit = limit ? parseInt(limit, 10) : undefined;
+    return this.userService.getAllUsersWithTransactions(
+      chain,
+      transactionLimit,
+    );
+  }
+
   // Fetch a single user by wallet
   @Get(':wallet')
   async getUser(@Param('wallet') wallet: string): Promise<UserDto> {
@@ -68,6 +95,51 @@ export class UserController {
       chain,
       transactionLimit,
     );
+  }
+
+  // Fetch a user's token profitability (PNL)
+  @Get(':wallet/tokens-pnl')
+  async getUserTokensPnl(
+    @Param('wallet') wallet: string,
+    @Query('chain') chain: string,
+    @Query('tokens') tokens: string, // Expecting a comma-separated string of token addresses
+  ): Promise<
+    {
+      tokenAddress: string;
+      tokenName: string;
+      tokenSymbol: string;
+      tradeCount: number;
+      totalBuys: number;
+      totalSells: number;
+      totalTokenBought: string;
+      totalTokenBoughtUSD: string;
+      totalTokenSold: string;
+      totalTokenSoldUSD: string;
+      pnlUSD: string;
+      pnlPercentage: number;
+    }[]
+  > {
+    if (!chain) {
+      throw new BadRequestException('Chain parameter is required');
+    }
+
+    // Convert comma-separated tokens string to array
+    const tokenArray = tokens ? tokens.split(',').map((t) => t.trim()) : [];
+    if (tokenArray.length === 0) {
+      throw new BadRequestException('At least one token address is required');
+    }
+
+    const results = await this.userService.getUserTokensPnl(
+      wallet,
+      chain,
+      tokenArray,
+    );
+    if (!results || results.length === 0) {
+      throw new NotFoundException(
+        `No PNL data found for wallet ${wallet} on chain ${chain}`,
+      );
+    }
+    return results;
   }
 
   // Seed the database (optional endpoint)

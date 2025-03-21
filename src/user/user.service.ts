@@ -1,10 +1,16 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { UserDto } from './dto/user.dto';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { User } from 'src/database/schemas/user.schema';
 import { TransactionDto } from 'src/socket/dto/transaction.dto';
 import { Transaction } from 'src/database/schemas/transactions.schema';
+import Moralis from 'moralis';
+import { Call } from 'src/database/schemas/moralisCalls.schema';
 
 @Injectable()
 export class UserService {
@@ -12,6 +18,7 @@ export class UserService {
     @InjectModel(User.name) private readonly UserModel: Model<User>,
     @InjectModel(Transaction.name)
     private readonly TransactionModel: Model<Transaction>,
+    @InjectModel(Call.name) private readonly CallModel: Model<Call>,
   ) {
     this.seedDatabase();
   }
@@ -309,6 +316,261 @@ export class UserService {
         `limit: ${limit}`,
         error.message || error,
       );
+      throw error;
+    }
+  }
+
+  async getAllUsersWithTransactions(
+    chain?: string,
+    limit: number = 50,
+  ): Promise<
+    {
+      name: string;
+      wallet: string;
+      twitter: string;
+      telegram: string;
+      website: string;
+      chains: string[];
+      imageUrl: string;
+      transactions: TransactionDto[];
+    }[]
+  > {
+    try {
+      // Cap the limit at 50
+      const cappedLimit = Math.min(limit, 50);
+
+      // Fetch all users from UserModel
+      const users = await this.UserModel.find().exec();
+
+      if (!users || users.length === 0) {
+        console.log('No users found');
+        return [];
+      }
+
+      // Build the base query for transactions
+      const query: any = {};
+      if (chain) {
+        query.chain = chain;
+      }
+
+      // Fetch transactions for each user
+      const userPromises = users.map(async (user) => {
+        const transactions = await this.TransactionModel.find({
+          ...query,
+          wallet: user.wallet.toLowerCase(),
+        })
+          .sort({ blockTimestamp: -1 })
+          .limit(cappedLimit)
+          .exec();
+
+        return {
+          name: user.name,
+          wallet: user.wallet,
+          twitter: user.twitter,
+          telegram: user.telegram,
+          website: user.website,
+          chains: user.chains,
+          imageUrl: user.imageUrl,
+          transactions: transactions.map((tx) => ({
+            wallet: tx.wallet,
+            chain: tx.chain,
+            type: tx.type,
+            txHash: tx.txHash,
+            txIndex: tx.txIndex,
+            blockTimestamp: tx.blockTimestamp,
+            tokenOutSymbol: tx.tokenOutSymbol,
+            tokenOutName: tx.tokenOutName,
+            tokenOutLogo: tx.tokenOutLogo,
+            tokenOutAddress: tx.tokenOutAddress,
+            tokenOutAmount: tx.tokenOutAmount,
+            tokenOutAmountUsd: tx.tokenOutAmountUsd,
+            tokenInSymbol: tx.tokenInSymbol,
+            tokenInName: tx.tokenInName,
+            tokenInLogo: tx.tokenInLogo,
+            tokenInAddress: tx.tokenInAddress,
+            tokenInAmount: tx.tokenInAmount,
+            tokenInAmountUsd: tx.tokenInAmountUsd,
+          })),
+        };
+      });
+
+      const results = await Promise.all(userPromises);
+
+      // Optionally filter out users with no transactions
+      const filteredResults = results.filter(
+        (result) => result.transactions.length > 0,
+      );
+
+      if (filteredResults.length === 0) {
+        console.log(
+          `No transactions found${chain ? ` for chain: ${chain}` : ''}`,
+        );
+        return [];
+      }
+
+      return filteredResults;
+    } catch (error: any) {
+      console.error(
+        'Error fetching all users with transactions:',
+        chain ? `chain: ${chain}` : '',
+        `limit: ${limit}`,
+        error.message || error,
+      );
+      throw error;
+    }
+  }
+
+  // async getUserTokensPnl(
+  //   wallet: string,
+  //   chain: string,
+  //   token: string[],
+  // ): Promise<
+  //   {
+  //     tokenAddress: string;
+  //     tokenName: string;
+  //     tokenSymbol: string;
+  //     tradeCount: number;
+  //     totalBuys: number;
+  //     totalSells: number;
+  //     totalTokenBought: string;
+  //     totalTokenBoughtUSD: string;
+  //     totalTokenSold: string;
+  //     totalTokenSoldUSD: string;
+  //     pnlUSD: string;
+  //     pnlPercentage: number;
+  //   }[]
+  // > {
+  //   try {
+  //     let chainNumber;
+  //     if (chain === 'eth') {
+  //       chainNumber = '0x1';
+  //     } else if (chain === 'bsc') {
+  //       chainNumber = '0x38';
+  //     } else if (chain === 'base') {
+  //       chainNumber = '0x2105';
+  //     } else {
+  //       console.log('wrong chain');
+  //     }
+
+  //     const apiKeys = [
+  //       process.env.MORALIS_API_1,
+  //       process.env.MORALIS_API_2,
+  //       process.env.MORALIS_API_3,
+  //       process.env.MORALIS_API_4,
+  //       process.env.MORALIS_API_5,
+  //       process.env.MORALIS_API_6,
+  //     ];
+  //     const apiKeyIndex = await this.CallModel.findOne();
+  //     const currentApiKey = apiKeys[apiKeyIndex.call];
+  //     await Moralis.start({
+  //       apiKey: currentApiKey,
+  //     });
+
+  //     const response = await Moralis.EvmApi.wallets.getWalletProfitability({
+  //       chain: chainNumber,
+  //       tokenAddresses: token,
+  //       address: wallet,
+  //     });
+
+  //     console.log(response.raw);
+  //     if (response.raw.result.length > 0) {
+  //       return response.raw.result.map((token) => ({
+  //         tokenAddress: token.token_address,
+  //         tokenName: token.name,
+  //         tokenSymbol: token.symbol,
+  //         tradeCount: token.count_of_trades,
+  //         totalBuys: token.total_buys,
+  //         totalSells: token.total_sells,
+  //         totalTokenBought: token.total_tokens_bought,
+  //         totalTokenBoughtUSD: token.total_usd_invested,
+  //         totalTokenSold: token.total_tokens_sold,
+  //         totalTokenSoldUSD: token.total_sold_usd,
+  //         pnlUSD: token.realized_profit_usd,
+  //         pnlPercentage: token.realized_profit_percentage,
+  //       }));
+  //     }
+  //   } catch (error: any) {
+  //     console.error('Error fetching  users pnl ', error.message || error);
+  //     throw error;
+  //   }
+  // }
+
+  async getUserTokensPnl(
+    wallet: string,
+    chain: string,
+    token: string[],
+  ): Promise<
+    {
+      tokenAddress: string;
+      tokenName: string;
+      tokenSymbol: string;
+      tradeCount: number;
+      totalBuys: number;
+      totalSells: number;
+      totalTokenBought: string;
+      totalTokenBoughtUSD: string;
+      totalTokenSold: string;
+      totalTokenSoldUSD: string;
+      pnlUSD: string;
+      pnlPercentage: number;
+    }[]
+  > {
+    try {
+      // Map chain names to chain IDs
+      const chainMap: { [key: string]: string } = {
+        eth: '0x1', // Ethereum
+        bsc: '0x38', // Binance Smart Chain
+        base: '0x2105', // Base
+      };
+      const chainNumber = chainMap[chain.toLowerCase()];
+      if (!chainNumber) {
+        throw new BadRequestException(`Unsupported chain: ${chain}`);
+      }
+
+      // API key rotation
+      const apiKeys = [
+        process.env.MORALIS_API_1,
+        process.env.MORALIS_API_2,
+        process.env.MORALIS_API_3,
+        process.env.MORALIS_API_4,
+        process.env.MORALIS_API_5,
+        process.env.MORALIS_API_6,
+      ].filter(Boolean); // Remove undefined keys
+      //const apiKeyIndex = await this.CallModel.findOne();
+      // const keyIndex = apiKeyIndex?.call ?? 0; // Fallback to 0 if undefined
+
+      const keyIndex = 5;
+
+      const currentApiKey = apiKeys[keyIndex];
+      if (!currentApiKey) {
+        throw new Error('No valid Moralis API key available');
+      }
+
+      await Moralis.start({ apiKey: currentApiKey });
+
+      const response = await Moralis.EvmApi.wallets.getWalletProfitability({
+        chain: chainNumber,
+        tokenAddresses: token,
+        address: wallet,
+      });
+
+      const results = response.raw.result || [];
+      return results.map((token) => ({
+        tokenAddress: token.token_address,
+        tokenName: token.name,
+        tokenSymbol: token.symbol,
+        tradeCount: token.count_of_trades,
+        totalBuys: token.total_buys,
+        totalSells: token.total_sells,
+        totalTokenBought: token.total_tokens_bought,
+        totalTokenBoughtUSD: token.total_usd_invested,
+        totalTokenSold: token.total_tokens_sold,
+        totalTokenSoldUSD: token.total_sold_usd,
+        pnlUSD: token.realized_profit_usd,
+        pnlPercentage: token.realized_profit_percentage,
+      }));
+    } catch (error: any) {
+      console.error('Error fetching user PNL:', error.message || error);
       throw error;
     }
   }

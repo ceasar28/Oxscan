@@ -7,6 +7,7 @@ import {
   Transaction,
   TransactionSchema,
 } from 'src/database/schemas/transactions.schema';
+import { Call, CallSchema } from 'src/database/schemas/moralisCalls.schema';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import {
     MongooseModule.forFeature([
       { name: Transaction.name, schema: TransactionSchema },
     ]),
+    MongooseModule.forFeature([{ name: Call.name, schema: CallSchema }]),
   ],
   providers: [UserService],
   controllers: [UserController],
