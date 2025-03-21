@@ -22,7 +22,7 @@ export class UserService {
     private readonly TransactionModel: Model<Transaction>,
     @InjectModel(Call.name) private readonly CallModel: Model<Call>,
   ) {
-    this.seedDatabase();
+    // this.seedDatabase();
   }
 
   // Create a new user

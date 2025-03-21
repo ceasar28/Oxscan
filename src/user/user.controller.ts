@@ -135,7 +135,6 @@ export class UserController {
   async getUserTokensPnl(
     @Param('wallet') wallet: string,
     @Query('chain') chain: string,
-    @Query('duration') duration: string,
     @Query('tokens') tokens: string, // Expecting a comma-separated string of token addresses
   ): Promise<
     {
@@ -153,7 +152,6 @@ export class UserController {
       pnlPercentage: number;
     }[]
   > {
-    console.log(duration);
     if (!chain) {
       throw new BadRequestException('Chain parameter is required');
     }
@@ -167,7 +165,6 @@ export class UserController {
       wallet,
       chain,
       tokenArray,
-      duration,
     );
     if (!results || results.length === 0) {
       throw new NotFoundException(
