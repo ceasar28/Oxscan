@@ -964,6 +964,130 @@ export class UserService {
     }
   }
 
+  async getBscPnlLeaderBoard(chain?: string): Promise<
+    {
+      name: string;
+      wallet: string;
+      twitter: string;
+      telegram: string;
+      website: string;
+      chains: string[];
+      imageUrl: string;
+      pnlSummary: {
+        totalTradesCount: number;
+        totalPnlUSD: string;
+        totalPnlPercentage: number;
+        totalBuys: number;
+        totalSells: number;
+        totalBuysUSD: string;
+        totalSellsUSD: string;
+      };
+    }[]
+  > {
+    try {
+      // Hardcode to BSC for this specific use case
+
+      // Fetch all users from UserModel
+      const users = await this.UserModel.find().exec();
+      if (!users || users.length === 0) {
+        console.log('No users found');
+        return [];
+      }
+
+      // Default PNL summary for users with no transactions
+      const defaultPnlSummary = {
+        totalTradesCount: 0,
+        totalPnlUSD: '0',
+        totalPnlPercentage: 0,
+        totalBuys: 0,
+        totalSells: 0,
+        totalBuysUSD: '0',
+        totalSellsUSD: '0',
+      };
+
+      // Calculate PNL for each user based on BSC transactions
+      const pnlPromises = users.map(async (user) => {
+        // Fetch BSC transactions for this user
+        const transactions = await this.TransactionModel.find({
+          wallet: user.wallet.toLowerCase(),
+          chain: chain,
+        }).exec();
+
+        // Initialize PNL summary
+        const totalTradesCount = transactions.length;
+        let totalBuys = 0;
+        let totalSells = 0;
+        let totalBuysUSD = 0;
+        let totalSellsUSD = 0;
+
+        // Process transactions
+        transactions.forEach((tx) => {
+          if (tx.tokenInAddress) {
+            totalBuys += 1;
+            totalBuysUSD += parseFloat(tx.tokenInAmountUsd) || 0;
+          }
+          if (tx.tokenOutAddress) {
+            totalSells += 1;
+            totalSellsUSD += parseFloat(tx.tokenOutAmountUsd) || 0;
+          }
+        });
+
+        // Calculate PNL
+        const totalPnlUSD = totalSellsUSD - totalBuysUSD;
+        const totalPnlPercentage =
+          totalBuysUSD !== 0 ? (totalPnlUSD / totalBuysUSD) * 100 : 0;
+
+        // Format PNL summary
+        const pnlSummary =
+          transactions.length > 0
+            ? {
+                totalTradesCount,
+                totalPnlUSD: totalPnlUSD.toFixed(2), // String with 2 decimals
+                totalPnlPercentage: parseFloat(totalPnlPercentage.toFixed(2)), // Number with 2 decimals
+                totalBuys,
+                totalSells,
+                totalBuysUSD: totalBuysUSD.toFixed(2), // String with 2 decimals
+                totalSellsUSD: totalSellsUSD.toFixed(2), // String with 2 decimals
+              }
+            : defaultPnlSummary;
+
+        return {
+          name: user.name || 'Unknown',
+          wallet: user.wallet,
+          twitter: user.twitter || '',
+          telegram: user.telegram || '',
+          website: user.website || '',
+          chains: user.chains || [],
+          imageUrl: user.imageUrl || '',
+          pnlSummary,
+        };
+      });
+
+      // Wait for all PNL calculations to complete
+      const leaderboard = await Promise.all(pnlPromises);
+
+      // Filter out users with zero trades
+      const filteredLeaderboard = leaderboard.filter(
+        (entry) => entry.pnlSummary.totalTradesCount > 0,
+      );
+
+      // Sort by totalPnlUSD (descending order)
+      filteredLeaderboard.sort((a, b) => {
+        const pnlA = parseFloat(a.pnlSummary.totalPnlUSD);
+        const pnlB = parseFloat(b.pnlSummary.totalPnlUSD);
+        return pnlB - pnlA; // Descending order
+      });
+
+      return filteredLeaderboard;
+    } catch (error: any) {
+      console.error(
+        'Error fetching BSC PNL leaderboard:',
+        error.message || error,
+      );
+      throw error;
+    }
+  }
+
   // async calculateUserTokensPnl(
   //   wallet: string,
   //   chain,

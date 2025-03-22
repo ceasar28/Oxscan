@@ -109,6 +109,39 @@ export class UserController {
     return leaderboard;
   }
 
+  // Fetch PNL leaderboard for all users on a given chain
+  @Get('pnl-leaderboard-v2')
+  async getBscPnlLeaderBoard(@Query('chain') chain?: string): Promise<
+    {
+      name: string;
+      wallet: string;
+      twitter: string;
+      telegram: string;
+      website: string;
+      chains: string[];
+      imageUrl: string;
+      pnlSummary: {
+        totalTradesCount: number;
+        totalPnlUSD: string;
+        totalPnlPercentage: number;
+        totalBuys: number;
+        totalSells: number;
+        totalBuysUSD: string;
+        totalSellsUSD: string;
+      };
+    }[]
+  > {
+    if (!chain) {
+      throw new BadRequestException('Chain parameter is required');
+    }
+
+    const leaderboard = await this.userService.getBscPnlLeaderBoard(chain);
+    if (!leaderboard || leaderboard.length === 0) {
+      throw new NotFoundException(`No PNL data found for chain ${chain}`);
+    }
+    return leaderboard;
+  }
+
   // Fetch a single user by wallet
   @Get(':wallet')
   async getUser(@Param('wallet') wallet: string): Promise<UserDto> {
