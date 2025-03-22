@@ -592,7 +592,7 @@ export class TrackerService {
   }
 
   // @Cron(process.env.CRON || '*/30 * * * * *') // Executes every 30 seconds
-  // @Cron(' * * * * *')
+  @Cron('*/2 * * * *')
   async handleCron(): Promise<void> {
     try {
       this.logger.log('Executing token tracking cron job...');
