@@ -657,7 +657,7 @@ export class TrackerService {
       }
 
       // Calculate the new call index
-      const newCall = (apiIndex.call + 1) % 6; // Increment and wrap back to 0 after 5
+      const newCall = (apiIndex.call + 1) % 35; // Increment and wrap back to 0 after 5
 
       // Update the database with the new call index
       await this.CallModel.findByIdAndUpdate(apiIndex._id, {
