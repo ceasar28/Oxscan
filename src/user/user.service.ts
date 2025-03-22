@@ -33,7 +33,16 @@ export class UserService {
         wallet: userDto.wallet.toLowerCase(),
       });
       if (existingUser) {
-        throw new Error(`User with wallet ${userDto.wallet} already exists`);
+        return {
+          name: existingUser.name,
+          wallet: existingUser.wallet,
+          twitter: existingUser.twitter,
+          telegram: existingUser.telegram,
+          website: existingUser.website,
+          chains: existingUser.chains,
+          imageUrl: existingUser.imageUrl,
+          temporal: existingUser.temporal,
+        };
       }
 
       // Create new user
