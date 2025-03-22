@@ -587,7 +587,7 @@ export class UserService {
         process.env.MORALIS_API_35,
       ].filter(Boolean); // Remove undefined keys
       const apiKeyIndex = await this.CallModel.findOne();
-      const keyIndex = apiKeyIndex?.call ?? 15; // Fallback to 15 if undefined
+      const keyIndex = apiKeyIndex?.call ?? 34; // Fallback to 15 if undefined
 
       // const keyIndex = 5;
 

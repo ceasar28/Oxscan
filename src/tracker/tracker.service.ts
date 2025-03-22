@@ -5,7 +5,7 @@ import { Cron } from '@nestjs/schedule';
 import { Model } from 'mongoose';
 import { Call } from 'src/database/schemas/moralisCalls.schema';
 import { Transaction } from 'src/database/schemas/transactions.schema';
-import { User } from 'src/database/schemas/user.schema';
+import { User, UserDocument } from 'src/database/schemas/user.schema';
 import { SocketGateway } from 'src/socket/socket.gateway';
 
 @Injectable()
@@ -83,7 +83,10 @@ export class TrackerService {
     }
   }
 
-  async trackEthTransactions(walletAddress: string): Promise<void> {
+  async trackEthTransactions(
+    walletAddress: string,
+    user: UserDocument,
+  ): Promise<void> {
     const apiKeys = [
       process.env.MORALIS_API_1,
       process.env.MORALIS_API_2,
@@ -199,28 +202,38 @@ export class TrackerService {
 
         try {
           await newTransaction.save();
+
           //TODO:EMIT the new transaction socket here
           this.socketGateway.server.emit('onNewTransaction', {
             msg: 'New Transaction',
             content: {
-              wallet: walletAddress.toLowerCase(),
-              chain: 'eth',
-              type: tx.transactionType,
-              txHash: tx.transactionHash,
-              txIndex: tx.transactionIndex,
-              blockTimestamp: tx.blockTimestamp,
-              tokenOutName: tx.sold.name,
-              tokenOutSymbol: tx.sold.symbol,
-              tokenOutAddress: tx.sold.address,
-              tokenOutLogo: tx.sold.logo,
-              tokenOutAmount: tx.sold.amount,
-              tokenOutAmountUsd: tx.sold.usdAmount,
-              tokenInName: tx.bought.name,
-              tokenInSymbol: tx.bought.symbol,
-              tokenInAddress: tx.bought.address,
-              tokenInLogo: tx.bought.logo,
-              tokenInAmount: tx.bought.amount,
-              tokenInAmountUsd: tx.bought.usdAmount,
+              name: user.name || '',
+              wallet: user.wallet || walletAddress.toLowerCase(),
+              twitter: user.twitter || '',
+              telegram: user.telegram || '',
+              website: user.website || '',
+              chains: user.chains || [],
+              imageUrl: user.imageUrl || '',
+              transaction: {
+                wallet: walletAddress.toLowerCase(),
+                chain: 'eth',
+                type: tx.transactionType,
+                txHash: tx.transactionHash,
+                txIndex: tx.transactionIndex,
+                blockTimestamp: tx.blockTimestamp,
+                tokenOutName: tx.sold.name,
+                tokenOutSymbol: tx.sold.symbol,
+                tokenOutAddress: tx.sold.address,
+                tokenOutLogo: tx.sold.logo,
+                tokenOutAmount: tx.sold.amount,
+                tokenOutAmountUsd: tx.sold.usdAmount,
+                tokenInName: tx.bought.name,
+                tokenInSymbol: tx.bought.symbol,
+                tokenInAddress: tx.bought.address,
+                tokenInLogo: tx.bought.logo,
+                tokenInAmount: tx.bought.amount,
+                tokenInAmountUsd: tx.bought.usdAmount,
+              },
             },
           });
           transactionMap.set(txKey, newTransaction); // Update the map after saving
@@ -237,7 +250,10 @@ export class TrackerService {
     }
   }
 
-  async trackBscTransactions(walletAddress: string): Promise<void> {
+  async trackBscTransactions(
+    walletAddress: string,
+    user: UserDocument,
+  ): Promise<void> {
     const apiKeys = [
       process.env.MORALIS_API_1,
       process.env.MORALIS_API_2,
@@ -351,26 +367,38 @@ export class TrackerService {
 
         try {
           await newTransaction.save();
+
           //TODO:EMIT the new transaction socket here
           this.socketGateway.server.emit('onNewTransaction', {
             msg: 'New Transaction',
             content: {
-              wallet: walletAddress.toLowerCase(),
-              chain: 'bsc',
-              type: tx.transactionType,
-              txHash: tx.transactionHash,
-              txIndex: tx.transactionIndex,
-              blockTimestamp: tx.blockTimestamp,
-              tokenOutName: tx.sold.name,
-              tokenOutSymbol: tx.sold.symbol,
-              tokenOutAddress: tx.sold.address,
-              tokenOutAmount: tx.sold.amount,
-              tokenOutAmountUsd: tx.sold.usdAmount,
-              tokenInName: tx.bought.name,
-              tokenInSymbol: tx.bought.symbol,
-              tokenInAddress: tx.bought.address,
-              tokenInAmount: tx.bought.amount,
-              tokenInAmountUsd: tx.bought.usdAmount,
+              name: user.name || '',
+              wallet: user.wallet || walletAddress.toLowerCase(),
+              twitter: user.twitter || '',
+              telegram: user.telegram || '',
+              website: user.website || '',
+              chains: user.chains || [],
+              imageUrl: user.imageUrl || '',
+              transaction: {
+                wallet: walletAddress.toLowerCase(),
+                chain: 'bsc',
+                type: tx.transactionType,
+                txHash: tx.transactionHash,
+                txIndex: tx.transactionIndex,
+                blockTimestamp: tx.blockTimestamp,
+                tokenOutName: tx.sold.name,
+                tokenOutSymbol: tx.sold.symbol,
+                tokenOutAddress: tx.sold.address,
+                tokenOutLogo: tx.sold.logo,
+                tokenOutAmount: tx.sold.amount,
+                tokenOutAmountUsd: tx.sold.usdAmount,
+                tokenInName: tx.bought.name,
+                tokenInSymbol: tx.bought.symbol,
+                tokenInAddress: tx.bought.address,
+                tokenInLogo: tx.bought.logo,
+                tokenInAmount: tx.bought.amount,
+                tokenInAmountUsd: tx.bought.usdAmount,
+              },
             },
           });
           transactionMap.set(txKey, newTransaction); // Update the map after saving
@@ -387,7 +415,10 @@ export class TrackerService {
     }
   }
 
-  async trackBaseTransactions(walletAddress: string): Promise<void> {
+  async trackBaseTransactions(
+    walletAddress: string,
+    user: UserDocument,
+  ): Promise<void> {
     const apiKeys = [
       process.env.MORALIS_API_1,
       process.env.MORALIS_API_2,
@@ -501,26 +532,38 @@ export class TrackerService {
 
         try {
           await newTransaction.save();
+
           //TODO:EMIT the new transaction socket here
           this.socketGateway.server.emit('onNewTransaction', {
             msg: 'New Transaction',
             content: {
-              wallet: walletAddress.toLowerCase(),
-              chain: 'base',
-              type: tx.transactionType,
-              txHash: tx.transactionHash,
-              txIndex: tx.transactionIndex,
-              blockTimestamp: tx.blockTimestamp,
-              tokenOutName: tx.sold.name,
-              tokenOutSymbol: tx.sold.symbol,
-              tokenOutAddress: tx.sold.address,
-              tokenOutAmount: tx.sold.amount,
-              tokenOutAmountUsd: tx.sold.usdAmount,
-              tokenInName: tx.bought.name,
-              tokenInSymbol: tx.bought.symbol,
-              tokenInAddress: tx.bought.address,
-              tokenInAmount: tx.bought.amount,
-              tokenInAmountUsd: tx.bought.usdAmount,
+              name: user.name || '',
+              wallet: user.wallet || walletAddress.toLowerCase(),
+              twitter: user.twitter || '',
+              telegram: user.telegram || '',
+              website: user.website || '',
+              chains: user.chains || [],
+              imageUrl: user.imageUrl || '',
+              transaction: {
+                wallet: walletAddress.toLowerCase(),
+                chain: 'base',
+                type: tx.transactionType,
+                txHash: tx.transactionHash,
+                txIndex: tx.transactionIndex,
+                blockTimestamp: tx.blockTimestamp,
+                tokenOutName: tx.sold.name,
+                tokenOutSymbol: tx.sold.symbol,
+                tokenOutAddress: tx.sold.address,
+                tokenOutLogo: tx.sold.logo,
+                tokenOutAmount: tx.sold.amount,
+                tokenOutAmountUsd: tx.sold.usdAmount,
+                tokenInName: tx.bought.name,
+                tokenInSymbol: tx.bought.symbol,
+                tokenInAddress: tx.bought.address,
+                tokenInLogo: tx.bought.logo,
+                tokenInAmount: tx.bought.amount,
+                tokenInAmountUsd: tx.bought.usdAmount,
+              },
             },
           });
           transactionMap.set(txKey, newTransaction); // Update the map after saving
@@ -562,6 +605,7 @@ export class TrackerService {
   private async trackUserTransactions(
     wallet: string,
     chains: string[],
+    user: UserDocument,
   ): Promise<void> {
     // If chains array is empty, return early
     if (!chains || chains.length === 0) {
@@ -578,13 +622,13 @@ export class TrackerService {
       const trackingPromises = [];
 
       if (chains.includes('eth')) {
-        trackingPromises.push(this.trackEthTransactions(wallet));
+        trackingPromises.push(this.trackEthTransactions(wallet, user));
       }
       if (chains.includes('bsc')) {
-        trackingPromises.push(this.trackBscTransactions(wallet));
+        trackingPromises.push(this.trackBscTransactions(wallet, user));
       }
       if (chains.includes('base')) {
-        trackingPromises.push(this.trackBaseTransactions(wallet));
+        trackingPromises.push(this.trackBaseTransactions(wallet, user));
       }
 
       // Execute all applicable tracking functions simultaneously
@@ -612,7 +656,7 @@ export class TrackerService {
 
       // Process all users simultaneously
       const userPromises = users.map((user) =>
-        this.trackUserTransactions(user.wallet, user.chains),
+        this.trackUserTransactions(user.wallet, user.chains, user),
       );
 
       // Wait for all users' tracking to complete
