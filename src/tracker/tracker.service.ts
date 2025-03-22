@@ -20,7 +20,7 @@ export class TrackerService {
     private readonly TransactionModel: Model<Transaction>,
     private readonly socketGateway: SocketGateway, // Inject SocketGateway
   ) {
-    this.initializeCallModel();
+    // this.initializeCallModel();
   }
 
   private async initializeCallModel() {
@@ -35,6 +35,51 @@ export class TrackerService {
       console.log('Call model re-initialized successfully.');
     } catch (error) {
       console.error('Error initializing Call model:', error);
+    }
+  }
+
+  async getGasPrice() {
+    try {
+      // Define all API calls
+      const bnbPricePromise = this.httpService.axiosRef.get(
+        `https://api.bscscan.com/api?module=stats&action=bnbprice&apikey=${process.env.BSC_KEY}`,
+      );
+
+      const bnbGasPromise = this.httpService.axiosRef.get(
+        `https://api.bscscan.com/api?module=gastracker&action=gasoracle&apikey=${process.env.BSC_KEY}`,
+      );
+
+      const ethPricePromise = this.httpService.axiosRef.get(
+        `https://api.basescan.org/api?module=stats&action=ethprice&apikey=${process.env.BASE_KEY}`,
+      );
+
+      const ethGasPromise = this.httpService.axiosRef.get(
+        `https://api.etherscan.io/v2/api?chainid=1&module=gastracker&action=gasoracle&apikey=${process.env.ETH_KEY}`,
+      );
+
+      // Execute all API calls simultaneously
+      const [
+        bnbPriceResponse,
+        bnbGasResponse,
+        ethPriceResponse,
+        ethGasResponse,
+      ] = await Promise.all([
+        bnbPricePromise,
+        bnbGasPromise,
+        ethPricePromise,
+        ethGasPromise,
+      ]);
+
+      // Return the results in an object
+      return {
+        bnbPrice: bnbPriceResponse.data,
+        bnbGas: bnbGasResponse.data,
+        ethPrice: ethPriceResponse.data,
+        ethGas: ethGasResponse.data,
+      };
+    } catch (error) {
+      console.error('Error getting gas:', error);
+      throw error; // Re-throw the error to be handled by the caller
     }
   }
 
@@ -592,7 +637,7 @@ export class TrackerService {
   }
 
   // @Cron(process.env.CRON || '*/30 * * * * *') // Executes every 30 seconds
-  @Cron('*/2 * * * *')
+  // @Cron('*/2 * * * *')
   async handleCron(): Promise<void> {
     try {
       this.logger.log('Executing token tracking cron job...');
