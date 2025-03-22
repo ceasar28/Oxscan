@@ -44,6 +44,29 @@ export class TrackerService {
       process.env.MORALIS_API_2,
       process.env.MORALIS_API_3,
       process.env.MORALIS_API_4,
+      process.env.MORALIS_API_5,
+      process.env.MORALIS_API_6,
+      process.env.MORALIS_API_7,
+      process.env.MORALIS_API_8,
+      process.env.MORALIS_API_9,
+      process.env.MORALIS_API_10,
+      process.env.MORALIS_API_11,
+      process.env.MORALIS_API_12,
+      process.env.MORALIS_API_13,
+      process.env.MORALIS_API_14,
+      process.env.MORALIS_API_15,
+      process.env.MORALIS_API_16,
+      process.env.MORALIS_API_17,
+      process.env.MORALIS_API_18,
+      process.env.MORALIS_API_19,
+      process.env.MORALIS_API_20,
+      process.env.MORALIS_API_21,
+      process.env.MORALIS_API_22,
+      process.env.MORALIS_API_23,
+      process.env.MORALIS_API_24,
+      process.env.MORALIS_API_25,
+      process.env.MORALIS_API_26,
+      process.env.MORALIS_API_27,
     ];
 
     const swapUrl = `https://deep-index.moralis.io/api/v2.2/wallets/${walletAddress}/swaps?chain=eth&order=DESC`;
@@ -168,6 +191,29 @@ export class TrackerService {
       process.env.MORALIS_API_2,
       process.env.MORALIS_API_3,
       process.env.MORALIS_API_4,
+      process.env.MORALIS_API_5,
+      process.env.MORALIS_API_6,
+      process.env.MORALIS_API_7,
+      process.env.MORALIS_API_8,
+      process.env.MORALIS_API_9,
+      process.env.MORALIS_API_10,
+      process.env.MORALIS_API_11,
+      process.env.MORALIS_API_12,
+      process.env.MORALIS_API_13,
+      process.env.MORALIS_API_14,
+      process.env.MORALIS_API_15,
+      process.env.MORALIS_API_16,
+      process.env.MORALIS_API_17,
+      process.env.MORALIS_API_18,
+      process.env.MORALIS_API_19,
+      process.env.MORALIS_API_20,
+      process.env.MORALIS_API_21,
+      process.env.MORALIS_API_22,
+      process.env.MORALIS_API_23,
+      process.env.MORALIS_API_24,
+      process.env.MORALIS_API_25,
+      process.env.MORALIS_API_26,
+      process.env.MORALIS_API_27,
     ];
 
     const swapUrl = `https://deep-index.moralis.io/api/v2.2/wallets/${walletAddress}/swaps?chain=bsc&order=DESC`;
@@ -288,6 +334,29 @@ export class TrackerService {
       process.env.MORALIS_API_2,
       process.env.MORALIS_API_3,
       process.env.MORALIS_API_4,
+      process.env.MORALIS_API_5,
+      process.env.MORALIS_API_6,
+      process.env.MORALIS_API_7,
+      process.env.MORALIS_API_8,
+      process.env.MORALIS_API_9,
+      process.env.MORALIS_API_10,
+      process.env.MORALIS_API_11,
+      process.env.MORALIS_API_12,
+      process.env.MORALIS_API_13,
+      process.env.MORALIS_API_14,
+      process.env.MORALIS_API_15,
+      process.env.MORALIS_API_16,
+      process.env.MORALIS_API_17,
+      process.env.MORALIS_API_18,
+      process.env.MORALIS_API_19,
+      process.env.MORALIS_API_20,
+      process.env.MORALIS_API_21,
+      process.env.MORALIS_API_22,
+      process.env.MORALIS_API_23,
+      process.env.MORALIS_API_24,
+      process.env.MORALIS_API_25,
+      process.env.MORALIS_API_26,
+      process.env.MORALIS_API_27,
     ];
 
     const swapUrl = `https://deep-index.moralis.io/api/v2.2/wallets/${walletAddress}/swaps?chain=base&order=DESC`;
@@ -502,7 +571,7 @@ export class TrackerService {
   }
 
   // @Cron(process.env.CRON || '*/30 * * * * *') // Executes every 30 seconds
-  @Cron(' * * * * *')
+  // @Cron(' * * * * *')
   async handleCron(): Promise<void> {
     try {
       this.logger.log('Executing token tracking cron job...');
