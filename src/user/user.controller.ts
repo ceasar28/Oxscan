@@ -170,7 +170,7 @@ export class UserController {
       throw new BadRequestException('At least one token address is required');
     }
 
-    const results = await this.userService.getUserTokensPnl(
+    const results = await this.userService.calculateUserTokensPnl(
       wallet,
       chain,
       tokenArray,
@@ -182,6 +182,35 @@ export class UserController {
     }
     return results;
   }
+
+  //   @Get(':wallet/bsc-tokens-pnl')
+  //   async getUserBscTokensPnl(
+  //     @Param('wallet') wallet: string,
+  //     @Query('token') tokens: string, // Expecting a comma-separated string of token addresses
+  //   ): Promise<
+  //     {
+  //       tokenAddress: string;
+  //       tokenName: string;
+  //       tokenSymbol: string;
+  //       tradeCount: number;
+  //       totalBuys: number;
+  //       totalSells: number;
+  //       totalTokenBought: string;
+  //       totalTokenBoughtUSD: string;
+  //       totalTokenSold: string;
+  //       totalTokenSoldUSD: string;
+  //       pnlUSD: string;
+  //       pnlPercentage: number;
+  //     }[]
+  //   > {
+  //     const results = await this.userService.getUserTokensPnl(wallet);
+  //     if (!results || results.length === 0) {
+  //       throw new NotFoundException(
+  //         `No PNL data found for wallet ${wallet} on chain ${chain}`,
+  //       );
+  //     }
+  //     return results;
+  //   }
 
   // Fetch a user's top token holdings
   @Get(':wallet/top-holdings')

@@ -76,7 +76,7 @@ export class TrackerController {
       throw new HttpException(
         {
           status: 'error',
-          message: 'Failed to fetch gas prices',
+          message: 'Failed to fetch token metadata',
           error: error.message,
         },
         HttpStatus.INTERNAL_SERVER_ERROR,
