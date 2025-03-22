@@ -47,6 +47,7 @@ export class UserService {
         imageUrl: userDto.imageUrl,
         profit: userDto.profit || '0',
         loss: userDto.loss || '0',
+        temporal: userDto.temporal || false,
       });
 
       const savedUser = await newUser.save();
@@ -60,6 +61,7 @@ export class UserService {
         website: savedUser.website,
         chains: savedUser.chains,
         imageUrl: savedUser.imageUrl,
+        temporal: savedUser.temporal,
       };
     } catch (error: any) {
       console.error('Error saving user:', error.message || error);
@@ -118,6 +120,11 @@ export class UserService {
       }
 
       await user.deleteOne(); // or user.remove() depending on your Mongoose version
+
+      // Step 3: Delete all transactions associated with this wallet
+      await this.TransactionModel.deleteMany({
+        wallet: wallet.toLowerCase(),
+      }).exec();
 
       return { message: `User with wallet ${wallet} deleted successfully` };
     } catch (error: any) {

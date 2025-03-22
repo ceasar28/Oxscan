@@ -1,4 +1,10 @@
-import { IsString, IsNotEmpty, IsOptional, IsArray } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsArray,
+  IsBoolean,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger'; // Optional: for Swagger documentation
 
 export class UserDto {
@@ -49,4 +55,9 @@ export class UserDto {
   @IsString()
   @IsOptional()
   loss?: string;
+
+  @ApiProperty({ description: 'Website URL of the user' })
+  @IsBoolean()
+  @IsOptional()
+  temporal?: boolean;
 }
