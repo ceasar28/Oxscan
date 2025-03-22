@@ -31,6 +31,9 @@ export class User {
 
   @Prop()
   loss: string;
+
+  @Prop({ default: false })
+  temporal: boolean;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

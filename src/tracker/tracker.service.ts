@@ -672,6 +672,54 @@ export class TrackerService {
     }
   }
 
+  // Delete all temporal users and their transactions
+  async deleteTemporalUsers(): Promise<{
+    message: string;
+    deletedUsers: number;
+    deletedTransactions: number;
+  }> {
+    try {
+      // Step 1: Find all users where temporal is true
+      const temporalUsers = await this.UserModel.find({
+        temporal: true,
+      }).exec();
+      if (!temporalUsers || temporalUsers.length === 0) {
+        return {
+          message: 'No temporal users found to delete',
+          deletedUsers: 0,
+          deletedTransactions: 0,
+        };
+      }
+
+      // Step 2: Extract wallet addresses of temporal users
+      const walletAddresses = temporalUsers.map((user) =>
+        user.wallet.toLowerCase(),
+      );
+
+      // Step 3: Delete all temporal users
+      const userDeletionResult = await this.UserModel.deleteMany({
+        temporal: true,
+      }).exec();
+
+      // Step 4: Delete all transactions associated with these wallets
+      const transactionDeletionResult = await this.TransactionModel.deleteMany({
+        wallet: { $in: walletAddresses },
+      }).exec();
+
+      return {
+        message: `Successfully deleted ${userDeletionResult.deletedCount} temporal users and their transactions`,
+        deletedUsers: userDeletionResult.deletedCount,
+        deletedTransactions: transactionDeletionResult.deletedCount,
+      };
+    } catch (error: any) {
+      console.error(
+        'Error deleting temporal users and transactions:',
+        error.message || error,
+      );
+      throw error;
+    }
+  }
+
   // Placeholder for your alert logic
   private alertTransaction(transaction: any): void {
     console.log(
@@ -709,6 +757,16 @@ export class TrackerService {
       });
 
       this.logger.log(`Updated call index to ${newCall}`);
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  @Cron('*/30 * * * *')
+  async deleteTemporalDta(): Promise<void> {
+    try {
+      this.logger.log('deleting temporalData...');
+      await this.deleteTemporalUsers();
     } catch (error) {
       console.log(error);
     }
