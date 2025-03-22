@@ -83,6 +83,84 @@ export class TrackerService {
     }
   }
 
+  async getTokenMetadata(address: string, chain: string) {
+    try {
+      // API key rotation
+      const apiKeys = [
+        process.env.MORALIS_API_1,
+        process.env.MORALIS_API_2,
+        process.env.MORALIS_API_3,
+        process.env.MORALIS_API_4,
+        process.env.MORALIS_API_5,
+        process.env.MORALIS_API_6,
+        process.env.MORALIS_API_7,
+        process.env.MORALIS_API_8,
+        process.env.MORALIS_API_9,
+        process.env.MORALIS_API_10,
+        process.env.MORALIS_API_11,
+        process.env.MORALIS_API_12,
+        process.env.MORALIS_API_13,
+        process.env.MORALIS_API_14,
+        process.env.MORALIS_API_15,
+        process.env.MORALIS_API_16,
+        process.env.MORALIS_API_17,
+        process.env.MORALIS_API_18,
+        process.env.MORALIS_API_19,
+        process.env.MORALIS_API_20,
+        process.env.MORALIS_API_21,
+        process.env.MORALIS_API_22,
+        process.env.MORALIS_API_23,
+        process.env.MORALIS_API_24,
+        process.env.MORALIS_API_25,
+        process.env.MORALIS_API_26,
+        process.env.MORALIS_API_27,
+        process.env.MORALIS_API_28,
+        process.env.MORALIS_API_29,
+        process.env.MORALIS_API_30,
+        process.env.MORALIS_API_31,
+        process.env.MORALIS_API_32,
+        process.env.MORALIS_API_34,
+        process.env.MORALIS_API_35,
+      ].filter(Boolean); // Remove undefined keys
+      const apiKeyIndex = await this.CallModel.findOne();
+      const keyIndex = apiKeyIndex?.call ?? 34; // Fallback to 15 if undefined
+
+      // const keyIndex = 5;
+
+      const currentApiKey = apiKeys[keyIndex];
+      if (!currentApiKey) {
+        throw new Error('No valid Moralis API key available');
+      }
+
+      // Define all API calls
+      const tokenPrice = this.httpService.axiosRef.get(
+        `https://deep-index.moralis.io/api/v2.2/erc20/${address}/price?chain=${chain}&include=percent_change`,
+        { headers: { 'X-API-Key': currentApiKey } },
+      );
+      const params = { chain: chain };
+      params[`addresses`] = [address];
+      const marketCap = this.httpService.axiosRef.get(
+        `https://deep-index.moralis.io/api/v2.2/erc20/metadata`,
+        { params: params, headers: { 'X-API-Key': currentApiKey } },
+      );
+
+      // Execute all API calls simultaneously
+      const [tokenPriceResponse, marketCapResponse] = await Promise.all([
+        tokenPrice,
+        marketCap,
+      ]);
+
+      // Return the results in an object
+      return {
+        tokenPrice: tokenPriceResponse.data,
+        tokenMCap: marketCapResponse.data,
+      };
+    } catch (error) {
+      console.error('Error getting TokenData:', error);
+      throw error; // Re-throw the error to be handled by the caller
+    }
+  }
+
   async trackEthTransactions(
     walletAddress: string,
     user: UserDocument,
