@@ -67,6 +67,13 @@ export class TrackerService {
       process.env.MORALIS_API_25,
       process.env.MORALIS_API_26,
       process.env.MORALIS_API_27,
+      process.env.MORALIS_API_28,
+      process.env.MORALIS_API_29,
+      process.env.MORALIS_API_30,
+      process.env.MORALIS_API_31,
+      process.env.MORALIS_API_32,
+      process.env.MORALIS_API_34,
+      process.env.MORALIS_API_35,
     ];
 
     const swapUrl = `https://deep-index.moralis.io/api/v2.2/wallets/${walletAddress}/swaps?chain=eth&order=DESC`;
@@ -214,6 +221,13 @@ export class TrackerService {
       process.env.MORALIS_API_25,
       process.env.MORALIS_API_26,
       process.env.MORALIS_API_27,
+      process.env.MORALIS_API_28,
+      process.env.MORALIS_API_29,
+      process.env.MORALIS_API_30,
+      process.env.MORALIS_API_31,
+      process.env.MORALIS_API_32,
+      process.env.MORALIS_API_34,
+      process.env.MORALIS_API_35,
     ];
 
     const swapUrl = `https://deep-index.moralis.io/api/v2.2/wallets/${walletAddress}/swaps?chain=bsc&order=DESC`;
@@ -357,6 +371,13 @@ export class TrackerService {
       process.env.MORALIS_API_25,
       process.env.MORALIS_API_26,
       process.env.MORALIS_API_27,
+      process.env.MORALIS_API_28,
+      process.env.MORALIS_API_29,
+      process.env.MORALIS_API_30,
+      process.env.MORALIS_API_31,
+      process.env.MORALIS_API_32,
+      process.env.MORALIS_API_34,
+      process.env.MORALIS_API_35,
     ];
 
     const swapUrl = `https://deep-index.moralis.io/api/v2.2/wallets/${walletAddress}/swaps?chain=base&order=DESC`;

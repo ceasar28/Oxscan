@@ -578,11 +578,18 @@ export class UserService {
         process.env.MORALIS_API_25,
         process.env.MORALIS_API_26,
         process.env.MORALIS_API_27,
+        process.env.MORALIS_API_28,
+        process.env.MORALIS_API_29,
+        process.env.MORALIS_API_30,
+        process.env.MORALIS_API_31,
+        process.env.MORALIS_API_32,
+        process.env.MORALIS_API_34,
+        process.env.MORALIS_API_35,
       ].filter(Boolean); // Remove undefined keys
-      //const apiKeyIndex = await this.CallModel.findOne();
-      // const keyIndex = apiKeyIndex?.call ?? 0; // Fallback to 0 if undefined
+      const apiKeyIndex = await this.CallModel.findOne();
+      const keyIndex = apiKeyIndex?.call ?? 15; // Fallback to 15 if undefined
 
-      const keyIndex = 5;
+      // const keyIndex = 5;
 
       const currentApiKey = apiKeys[keyIndex];
       if (!currentApiKey) {
@@ -678,11 +685,18 @@ export class UserService {
         process.env.MORALIS_API_25,
         process.env.MORALIS_API_26,
         process.env.MORALIS_API_27,
+        process.env.MORALIS_API_28,
+        process.env.MORALIS_API_29,
+        process.env.MORALIS_API_30,
+        process.env.MORALIS_API_31,
+        process.env.MORALIS_API_32,
+        process.env.MORALIS_API_34,
+        process.env.MORALIS_API_35,
       ].filter(Boolean); // Remove undefined keys
-      //const apiKeyIndex = await this.CallModel.findOne();
-      // const keyIndex = apiKeyIndex?.call ?? 0; // Fallback to 0 if undefined
+      const apiKeyIndex = await this.CallModel.findOne();
+      const keyIndex = apiKeyIndex?.call ?? 15; // Fallback to 15 if undefined
 
-      const keyIndex = 4;
+      // const keyIndex = 4;
 
       const currentApiKey = apiKeys[keyIndex];
       if (!currentApiKey) {
@@ -776,6 +790,13 @@ export class UserService {
         process.env.MORALIS_API_25,
         process.env.MORALIS_API_26,
         process.env.MORALIS_API_27,
+        process.env.MORALIS_API_28,
+        process.env.MORALIS_API_29,
+        process.env.MORALIS_API_30,
+        process.env.MORALIS_API_31,
+        process.env.MORALIS_API_32,
+        process.env.MORALIS_API_34,
+        process.env.MORALIS_API_35,
       ].filter(Boolean);
       if (apiKeys.length === 0) {
         throw new Error('No valid Moralis API keys available');
@@ -804,18 +825,18 @@ export class UserService {
 
         while (attempt < maxAttempts) {
           try {
-            // const response = await firstValueFrom(
-            //   this.httpService.get(url, {
-            //     params,
-            //     headers: { 'X-API-Key': apiKeys[currentKeyIndex] },
-            //   }),
-            // );
             const response = await firstValueFrom(
               this.httpService.get(url, {
                 params,
-                headers: { 'X-API-Key': apiKeys[4] },
+                headers: { 'X-API-Key': apiKeys[currentKeyIndex] },
               }),
             );
+            // const response = await firstValueFrom(
+            //   this.httpService.get(url, {
+            //     params,
+            //     headers: { 'X-API-Key': apiKeys[4] },
+            //   }),
+            // );
             const summary = response.data || {};
 
             // Rotate to next key after successful call
