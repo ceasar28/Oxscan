@@ -765,7 +765,7 @@ export class UserService {
 
       const topHoldingsUrl = `https://deep-index.moralis.io/api/v2.2/wallets/${wallet}/tokens`;
 
-      const params = { chain: chain, exclude_spam: true, limit: 2 };
+      const params = { chain: chain, exclude_spam: true, limit: 15 };
 
       const response = await this.httpService.axiosRef.get(topHoldingsUrl, {
         params: params,
