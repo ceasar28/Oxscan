@@ -525,6 +525,19 @@ export class TrackerService {
     }
   }
 
+  @Cron('0 30 9 * * *', {
+    name: 'resetCallModelData',
+    timeZone: 'Africa/Lagos',
+  })
+  async resetKeyIndexToZeror(): Promise<void> {
+    try {
+      this.logger.log('reseting ...');
+      await this.CallModel.updateOne({}, { call: 0 });
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
   @Cron('*/30 * * * *')
   async deleteTemporalData(): Promise<void> {
     try {
