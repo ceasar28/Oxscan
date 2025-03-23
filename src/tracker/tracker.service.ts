@@ -483,7 +483,8 @@ export class TrackerService {
     );
   }
 
-  @Cron(process.env.CRON || '*/30 * * * * *') // Executes every 30 seconds
+  // @Cron('*/30 * * * * *') // Executes every 30 seconds
+  @Cron('*/10 * * * *')
   async handleCron(): Promise<void> {
     let initialKeyIndex: number;
     try {
