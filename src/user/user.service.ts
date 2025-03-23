@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { UserDto } from './dto/user.dto';
@@ -12,18 +13,72 @@ import { Transaction } from 'src/database/schemas/transactions.schema';
 import { Call } from 'src/database/schemas/moralisCalls.schema';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
+import { Mutex } from 'async-mutex';
 
 @Injectable()
 export class UserService {
+  private readonly logger = new Logger(UserService.name);
+  private readonly apiKeyMutex = new Mutex();
   constructor(
     private readonly httpService: HttpService,
     @InjectModel(User.name) private readonly UserModel: Model<User>,
     @InjectModel(Transaction.name)
     private readonly TransactionModel: Model<Transaction>,
     @InjectModel(Call.name) private readonly CallModel: Model<Call>,
-  ) {
-    // this.seedDatabase();
-  }
+  ) {}
+
+  private readonly apiKeys = [
+    process.env.MORALIS_API_1,
+    process.env.MORALIS_API_2,
+    process.env.MORALIS_API_3,
+    process.env.MORALIS_API_4,
+    process.env.MORALIS_API_5,
+    process.env.MORALIS_API_6,
+    process.env.MORALIS_API_7,
+    process.env.MORALIS_API_8,
+    process.env.MORALIS_API_9,
+    process.env.MORALIS_API_10,
+    process.env.MORALIS_API_11,
+    process.env.MORALIS_API_12,
+    process.env.MORALIS_API_13,
+    process.env.MORALIS_API_14,
+    process.env.MORALIS_API_15,
+    process.env.MORALIS_API_16,
+    process.env.MORALIS_API_17,
+    process.env.MORALIS_API_18,
+    process.env.MORALIS_API_19,
+    process.env.MORALIS_API_20,
+    process.env.MORALIS_API_21,
+    process.env.MORALIS_API_22,
+    process.env.MORALIS_API_23,
+    process.env.MORALIS_API_24,
+    process.env.MORALIS_API_25,
+    process.env.MORALIS_API_26,
+    process.env.MORALIS_API_27,
+    process.env.MORALIS_API_28,
+    process.env.MORALIS_API_29,
+    process.env.MORALIS_API_30,
+    process.env.MORALIS_API_31,
+    process.env.MORALIS_API_32,
+    process.env.MORALIS_API_33,
+    process.env.MORALIS_API_34,
+    process.env.MORALIS_API_35,
+    process.env.MORALIS_API_36,
+    process.env.MORALIS_API_37,
+    process.env.MORALIS_API_38,
+    process.env.MORALIS_API_39,
+    process.env.MORALIS_API_40,
+    process.env.MORALIS_API_41,
+    process.env.MORALIS_API_42,
+    process.env.MORALIS_API_43,
+    process.env.MORALIS_API_44,
+    process.env.MORALIS_API_45,
+    process.env.MORALIS_API_46,
+    process.env.MORALIS_API_47,
+    process.env.MORALIS_API_48,
+    process.env.MORALIS_API_49,
+    process.env.MORALIS_API_50,
+  ].filter(Boolean);
 
   // Create a new user
   async newUser(userDto: UserDto): Promise<UserDto> {
@@ -185,112 +240,6 @@ export class UserService {
       throw error;
     }
   }
-
-  // async getAUsersTransactions(
-  //   walletAddress: string,
-  // ): Promise<TransactionDto[]> {
-  //   try {
-  //     const transactions = await this.TransactionModel.find({
-  //       wallet: walletAddress.toLowerCase(),
-  //     }).exec();
-
-  //     if (!transactions || transactions.length === 0) {
-  //       console.log(`No transactions found for wallet: ${walletAddress}`);
-  //       return []; // Return empty array if no transactions
-  //     }
-
-  //     // Map transactions to TransactionDto
-  //     return transactions.map((tx) => ({
-  //       wallet: tx.wallet,
-  //       chain: tx.chain,
-  //       type: tx.type,
-  //       txHash: tx.txHash,
-  //       txIndex: tx.txIndex,
-  //       blockTimestamp: tx.blockTimestamp,
-  //       tokenOutSymbol: tx.tokenOutSymbol,
-  //       tokenOutName: tx.tokenOutName,
-  //       tokenOutLogo: tx.tokenOutLogo,
-  //       tokenOutAddress: tx.tokenOutAddress,
-  //       tokenOutAmount: tx.tokenOutAmount,
-  //       tokenOutAmountUsd: tx.tokenOutAmountUsd,
-  //       tokenInSymbol: tx.tokenInSymbol,
-  //       tokenInName: tx.tokenInName,
-  //       tokenInLogo: tx.tokenInLogo,
-  //       tokenInAddress: tx.tokenInAddress,
-  //       tokenInAmount: tx.tokenInAmount,
-  //       tokenInAmountUsd: tx.tokenInAmountUsd,
-  //     }));
-  //   } catch (error: any) {
-  //     console.error(
-  //       'Error fetching transactions for wallet:',
-  //       walletAddress,
-  //       error.message || error,
-  //     );
-  //     throw error;
-  //   }
-  // }
-
-  // New method to seed the database
-
-  // async getAUsersTransactions(
-  //   walletAddress: string,
-  //   chain?: string, // Optional chain parameter
-  // ): Promise<TransactionDto[]> {
-  //   try {
-  //     // Build the query object
-  //     const query: any = {
-  //       wallet: walletAddress.toLowerCase(),
-  //     };
-
-  //     // If chain is provided, add it to the query
-  //     if (chain) {
-  //       query.chain = chain;
-  //     }
-
-  //     const transactions = await this.TransactionModel.find(query)
-  //       .sort({ blockTimestamp: -1 }) // Sort by timestamp, descending (newest first)
-  //       .limit(50) // Limit to 50 records
-  //       .exec();
-
-  //     if (!transactions || transactions.length === 0) {
-  //       console.log(
-  //         `No transactions found for wallet: ${walletAddress}` +
-  //           (chain ? ` on chain: ${chain}` : ''),
-  //       );
-  //       return []; // Return empty array if no transactions
-  //     }
-
-  //     // Map transactions to TransactionDto
-  //     return transactions.map((tx) => ({
-  //       wallet: tx.wallet,
-  //       chain: tx.chain,
-  //       type: tx.type,
-  //       txHash: tx.txHash,
-  //       txIndex: tx.txIndex,
-  //       blockTimestamp: tx.blockTimestamp,
-  //       tokenOutSymbol: tx.tokenOutSymbol,
-  //       tokenOutName: tx.tokenOutName,
-  //       tokenOutLogo: tx.tokenOutLogo,
-  //       tokenOutAddress: tx.tokenOutAddress,
-  //       tokenOutAmount: tx.tokenOutAmount,
-  //       tokenOutAmountUsd: tx.tokenOutAmountUsd,
-  //       tokenInSymbol: tx.tokenInSymbol,
-  //       tokenInName: tx.tokenInName,
-  //       tokenInLogo: tx.tokenInLogo,
-  //       tokenInAddress: tx.tokenInAddress,
-  //       tokenInAmount: tx.tokenInAmount,
-  //       tokenInAmountUsd: tx.tokenInAmountUsd,
-  //     }));
-  //   } catch (error: any) {
-  //     console.error(
-  //       'Error fetching transactions for wallet:',
-  //       walletAddress,
-  //       chain ? `on chain: ${chain}` : '',
-  //       error.message || error,
-  //     );
-  //     throw error;
-  //   }
-  // }
 
   async getAUsersTransactions(
     walletAddress: string,
@@ -457,10 +406,209 @@ export class UserService {
     }
   }
 
-  // async getUserTokensPnl(
+  async calculateUserTokensPnl(
+    wallet: string,
+    chain: string,
+    tokens: string[],
+    timeFilter: 'all' | '1' | '3' | '7' | '14' | '30' = 'all',
+  ): Promise<
+    {
+      tokenAddress: string;
+      tokenName: string;
+      tokenSymbol: string;
+      tradeCount: number;
+      totalBuys: number;
+      totalSells: number;
+      totalBuyTokenAmount: string;
+      buyTokenName: string;
+      buyTokenSymbol: string;
+      totalSellTokenAmount: string;
+      sellTokenName: string;
+      sellTokenSymbol: string;
+      tokenNetAmount: string;
+      pnlUSD: string;
+      pnlPercentage: number;
+      avgBuyTimeSeconds: number;
+      avgSellTimeSeconds: number;
+    }[]
+  > {
+    try {
+      if (!chain) {
+        throw new NotFoundException('Chain parameter is required');
+      }
+      if (!tokens || tokens.length === 0) {
+        throw new NotFoundException('At least one token address is required');
+      }
+
+      const tokenAddresses = tokens.map((token) => token.toLowerCase());
+      const daysMap = { '1': 1, '3': 3, '7': 7, '14': 14, '30': 30 };
+      const days = daysMap[timeFilter];
+      const cutoffDate = days
+        ? new Date(Date.now() - days * 24 * 60 * 60 * 1000)
+        : null;
+
+      const query: any = {
+        wallet: wallet.toLowerCase(),
+        chain: chain.toLowerCase(),
+        $or: [
+          { tokenInAddress: { $in: tokenAddresses } },
+          { tokenOutAddress: { $in: tokenAddresses } },
+        ],
+      };
+      if (timeFilter !== 'all') {
+        query.blockTimestamp = { $gte: cutoffDate };
+      }
+
+      const transactions = await this.TransactionModel.find(query).exec();
+      if (!transactions || transactions.length === 0) {
+        throw new NotFoundException(
+          `No transactions found for wallet ${wallet} on chain ${chain} for the specified tokens${timeFilter !== 'all' ? ` in the last ${days} days` : ''}`,
+        );
+      }
+
+      const tokenMap: {
+        [key: string]: {
+          tokenName: string;
+          tokenSymbol: string;
+          totalBuys: number;
+          totalSells: number;
+          totalTokenBought: number;
+          totalTokenBoughtUSD: number;
+          totalBuyTokenAmount: number;
+          buyTokenName: string;
+          buyTokenSymbol: string;
+          totalTokenSold: number;
+          totalTokenSoldUSD: number;
+          totalSellTokenAmount: number;
+          sellTokenName: string;
+          sellTokenSymbol: string;
+          buyTimeSum: number;
+          sellTimeSum: number;
+        };
+      } = {};
+
+      tokenAddresses.forEach((tokenAddress) => {
+        tokenMap[tokenAddress] = {
+          tokenName: 'Unknown',
+          tokenSymbol: 'Unknown',
+          totalBuys: 0,
+          totalSells: 0,
+          totalTokenBought: 0,
+          totalTokenBoughtUSD: 0,
+          totalBuyTokenAmount: 0,
+          buyTokenName: 'Unknown',
+          buyTokenSymbol: 'Unknown',
+          totalTokenSold: 0,
+          totalTokenSoldUSD: 0,
+          totalSellTokenAmount: 0,
+          sellTokenName: 'Unknown',
+          sellTokenSymbol: 'Unknown',
+          buyTimeSum: 0,
+          sellTimeSum: 0,
+        };
+      });
+
+      transactions.forEach((tx) => {
+        const txTimestamp = new Date(tx.blockTimestamp).getTime();
+        const tokenAddress = tokenAddresses.find(
+          (addr) =>
+            addr === tx.tokenInAddress?.toLowerCase() ||
+            addr === tx.tokenOutAddress?.toLowerCase(),
+        );
+
+        if (!tokenAddress) return;
+
+        const tokenData = tokenMap[tokenAddress];
+
+        if (
+          tx.type === 'buy' &&
+          tx.tokenInAddress?.toLowerCase() === tokenAddress
+        ) {
+          tokenData.tokenName = tx.tokenInName || 'Unknown';
+          tokenData.tokenSymbol = tx.tokenInSymbol || 'Unknown';
+          const amountBought = Math.abs(parseFloat(tx.tokenInAmount) || 0);
+          const usdBought = Math.abs(parseFloat(tx.tokenInAmountUsd) || 0);
+          const amountSpent = Math.abs(parseFloat(tx.tokenOutAmount) || 0);
+          tokenData.totalBuys += 1;
+          tokenData.totalTokenBought += amountBought;
+          tokenData.totalTokenBoughtUSD += usdBought;
+          tokenData.totalBuyTokenAmount += amountSpent;
+          tokenData.buyTokenName = tx.tokenOutName || 'Unknown';
+          tokenData.buyTokenSymbol = tx.tokenOutSymbol || 'Unknown';
+          const buyTimeDiff = (Date.now() - txTimestamp) / 1000;
+          tokenData.buyTimeSum += buyTimeDiff;
+        } else if (
+          tx.type === 'sell' &&
+          tx.tokenOutAddress?.toLowerCase() === tokenAddress
+        ) {
+          tokenData.tokenName = tx.tokenOutName || 'Unknown';
+          tokenData.tokenSymbol = tx.tokenOutSymbol || 'Unknown';
+          const amountSold = Math.abs(parseFloat(tx.tokenOutAmount) || 0);
+          const usdSold = Math.abs(parseFloat(tx.tokenOutAmountUsd) || 0);
+          const amountReceived = Math.abs(parseFloat(tx.tokenInAmount) || 0);
+          tokenData.totalSells += 1;
+          tokenData.totalTokenSold += amountSold;
+          tokenData.totalTokenSoldUSD += usdSold;
+          tokenData.totalSellTokenAmount += amountReceived;
+          tokenData.sellTokenName = tx.tokenInName || 'Unknown';
+          tokenData.sellTokenSymbol = tx.tokenInSymbol || 'Unknown';
+          const sellTimeDiff = (Date.now() - txTimestamp) / 1000;
+          tokenData.sellTimeSum += sellTimeDiff;
+        }
+      });
+
+      const pnlResults = Object.keys(tokenMap).map((tokenAddress) => {
+        const token = tokenMap[tokenAddress];
+        const tradeCount = token.totalBuys + token.totalSells;
+        const tokenNetAmount = token.totalTokenBought - token.totalTokenSold;
+
+        // Prorate the bought USD to the sold portion
+        const soldProportion = token.totalTokenSold / token.totalTokenBought;
+        const proratedBoughtUSD = token.totalTokenBoughtUSD * soldProportion;
+        const pnlUSD = token.totalTokenSoldUSD - proratedBoughtUSD;
+        const pnlPercentage =
+          proratedBoughtUSD !== 0 ? (pnlUSD / proratedBoughtUSD) * 100 : 0;
+
+        const avgBuyTimeSeconds =
+          token.totalBuys > 0 ? token.buyTimeSum / token.totalBuys : 0;
+        const avgSellTimeSeconds =
+          token.totalSells > 0 ? token.sellTimeSum / token.totalSells : 0;
+
+        return {
+          tokenAddress,
+          tokenName: token.tokenName,
+          tokenSymbol: token.tokenSymbol,
+          tradeCount,
+          totalBuys: token.totalBuys,
+          totalSells: token.totalSells,
+          totalBuyTokenAmount: token.totalBuyTokenAmount.toFixed(6),
+          buyTokenName: token.buyTokenName,
+          buyTokenSymbol: token.buyTokenSymbol,
+          totalSellTokenAmount: token.totalSellTokenAmount.toFixed(6),
+          sellTokenName: token.sellTokenName,
+          sellTokenSymbol: token.sellTokenSymbol,
+          tokenNetAmount: tokenNetAmount.toFixed(6),
+          pnlUSD: pnlUSD.toFixed(2),
+          pnlPercentage: parseFloat(pnlPercentage.toFixed(2)),
+          avgBuyTimeSeconds: parseFloat(avgBuyTimeSeconds.toFixed(2)),
+          avgSellTimeSeconds: parseFloat(avgSellTimeSeconds.toFixed(2)),
+        };
+      });
+
+      return pnlResults;
+    } catch (error: any) {
+      console.error(
+        'Error calculating user token PNL:',
+        error.message || error,
+      );
+      throw error;
+    }
+  }
+
+  // async calculateUserTokensPnl(
   //   wallet: string,
   //   chain: string,
-  //   token: string[],
+  //   tokens: string[],
   // ): Promise<
   //   {
   //     tokenAddress: string;
@@ -478,203 +626,128 @@ export class UserService {
   //   }[]
   // > {
   //   try {
-  //     let chainNumber;
-  //     if (chain === 'eth') {
-  //       chainNumber = '0x1';
-  //     } else if (chain === 'bsc') {
-  //       chainNumber = '0x38';
-  //     } else if (chain === 'base') {
-  //       chainNumber = '0x2105';
-  //     } else {
-  //       console.log('wrong chain');
+  //     // Validate inputs
+  //     if (!chain) {
+  //       throw new NotFoundException('Chain parameter is required');
+  //     }
+  //     if (!tokens || tokens.length === 0) {
+  //       throw new NotFoundException('At least one token address is required');
   //     }
 
-  //     const apiKeys = [
-  //       process.env.MORALIS_API_1,
-  //       process.env.MORALIS_API_2,
-  //       process.env.MORALIS_API_3,
-  //       process.env.MORALIS_API_4,
-  //       process.env.MORALIS_API_5,
-  //       process.env.MORALIS_API_6,
-  //     ];
-  //     const apiKeyIndex = await this.CallModel.findOne();
-  //     const currentApiKey = apiKeys[apiKeyIndex.call];
-  //     await Moralis.start({
-  //       apiKey: currentApiKey,
-  //     });
+  //     // Normalize token addresses to lowercase
+  //     const tokenAddresses = tokens.map((token) => token.toLowerCase());
 
-  //     const response = await Moralis.EvmApi.wallets.getWalletProfitability({
-  //       chain: chainNumber,
-  //       tokenAddresses: token,
-  //       address: wallet,
-  //     });
+  //     // Fetch transactions for the given wallet, chain, and tokens
+  //     const transactions = await this.TransactionModel.find({
+  //       wallet: wallet.toLowerCase(),
+  //       chain: chain.toLowerCase(),
+  //       $or: [
+  //         { tokenInAddress: { $in: tokenAddresses } },
+  //         { tokenOutAddress: { $in: tokenAddresses } },
+  //       ],
+  //     }).exec();
 
-  //     console.log(response.raw);
-  //     if (response.raw.result.length > 0) {
-  //       return response.raw.result.map((token) => ({
-  //         tokenAddress: token.token_address,
-  //         tokenName: token.name,
-  //         tokenSymbol: token.symbol,
-  //         tradeCount: token.count_of_trades,
-  //         totalBuys: token.total_buys,
-  //         totalSells: token.total_sells,
-  //         totalTokenBought: token.total_tokens_bought,
-  //         totalTokenBoughtUSD: token.total_usd_invested,
-  //         totalTokenSold: token.total_tokens_sold,
-  //         totalTokenSoldUSD: token.total_sold_usd,
-  //         pnlUSD: token.realized_profit_usd,
-  //         pnlPercentage: token.realized_profit_percentage,
-  //       }));
+  //     if (!transactions || transactions.length === 0) {
+  //       throw new NotFoundException(
+  //         `No transactions found for wallet ${wallet} on chain ${chain} for the specified tokens`,
+  //       );
   //     }
+
+  //     // Group transactions by token and calculate PNL
+  //     const tokenMap: {
+  //       [key: string]: {
+  //         tokenName: string;
+  //         tokenSymbol: string;
+  //         totalBuys: number;
+  //         totalSells: number;
+  //         totalTokenBought: number;
+  //         totalTokenBoughtUSD: number;
+  //         totalTokenSold: number;
+  //         totalTokenSoldUSD: number;
+  //       };
+  //     } = {};
+
+  //     // Initialize tokenMap with provided tokens to ensure all are included, even with no activity
+  //     tokenAddresses.forEach((tokenAddress) => {
+  //       tokenMap[tokenAddress] = {
+  //         tokenName: 'Unknown',
+  //         tokenSymbol: 'Unknown',
+  //         totalBuys: 0,
+  //         totalSells: 0,
+  //         totalTokenBought: 0,
+  //         totalTokenBoughtUSD: 0,
+  //         totalTokenSold: 0,
+  //         totalTokenSoldUSD: 0,
+  //       };
+  //     });
+
+  //     // Process transactions
+  //     transactions.forEach((tx) => {
+  //       // Handle token out (sell)
+  //       if (
+  //         tx.tokenOutAddress &&
+  //         tokenAddresses.includes(tx.tokenOutAddress.toLowerCase())
+  //       ) {
+  //         const tokenAddress = tx.tokenOutAddress.toLowerCase();
+  //         tokenMap[tokenAddress].tokenName = tx.tokenOutName || 'Unknown';
+  //         tokenMap[tokenAddress].tokenSymbol = tx.tokenOutSymbol || 'Unknown';
+  //         const amount = parseFloat(tx.tokenOutAmount) || 0;
+  //         const usd = parseFloat(tx.tokenOutAmountUsd) || 0;
+  //         tokenMap[tokenAddress].totalSells += 1;
+  //         tokenMap[tokenAddress].totalTokenSold += amount;
+  //         tokenMap[tokenAddress].totalTokenSoldUSD += usd;
+  //       }
+
+  //       // Handle token in (buy)
+  //       if (
+  //         tx.tokenInAddress &&
+  //         tokenAddresses.includes(tx.tokenInAddress.toLowerCase())
+  //       ) {
+  //         const tokenAddress = tx.tokenInAddress.toLowerCase();
+  //         tokenMap[tokenAddress].tokenName = tx.tokenInName || 'Unknown';
+  //         tokenMap[tokenAddress].tokenSymbol = tx.tokenInSymbol || 'Unknown';
+  //         const amount = parseFloat(tx.tokenInAmount) || 0;
+  //         const usd = parseFloat(tx.tokenInAmountUsd) || 0;
+  //         tokenMap[tokenAddress].totalBuys += 1;
+  //         tokenMap[tokenAddress].totalTokenBought += amount;
+  //         tokenMap[tokenAddress].totalTokenBoughtUSD += usd;
+  //       }
+  //     });
+
+  //     // Convert tokenMap to array and calculate PNL
+  //     const pnlResults = Object.keys(tokenMap).map((tokenAddress) => {
+  //       const token = tokenMap[tokenAddress];
+  //       const pnlUSD = token.totalTokenSoldUSD - token.totalTokenBoughtUSD;
+  //       const pnlPercentage =
+  //         token.totalTokenBoughtUSD !== 0
+  //           ? (pnlUSD / token.totalTokenBoughtUSD) * 100
+  //           : 0;
+
+  //       return {
+  //         tokenAddress,
+  //         tokenName: token.tokenName,
+  //         tokenSymbol: token.tokenSymbol,
+  //         tradeCount: token.totalBuys + token.totalSells,
+  //         totalBuys: token.totalBuys,
+  //         totalSells: token.totalSells,
+  //         totalTokenBought: token.totalTokenBought.toFixed(6), // String with 6 decimals
+  //         totalTokenBoughtUSD: token.totalTokenBoughtUSD.toFixed(2), // String with 2 decimals
+  //         totalTokenSold: token.totalTokenSold.toFixed(6), // String with 6 decimals
+  //         totalTokenSoldUSD: token.totalTokenSoldUSD.toFixed(2), // String with 2 decimals
+  //         pnlUSD: pnlUSD.toFixed(2), // String with 2 decimals
+  //         pnlPercentage: parseFloat(pnlPercentage.toFixed(2)), // Number with 2 decimals
+  //       };
+  //     });
+
+  //     return pnlResults;
   //   } catch (error: any) {
-  //     console.error('Error fetching  users pnl ', error.message || error);
+  //     console.error(
+  //       'Error calculating user token PNL:',
+  //       error.message || error,
+  //     );
   //     throw error;
   //   }
   // }
-
-  async calculateUserTokensPnl(
-    wallet: string,
-    chain: string,
-    tokens: string[],
-  ): Promise<
-    {
-      tokenAddress: string;
-      tokenName: string;
-      tokenSymbol: string;
-      tradeCount: number;
-      totalBuys: number;
-      totalSells: number;
-      totalTokenBought: string;
-      totalTokenBoughtUSD: string;
-      totalTokenSold: string;
-      totalTokenSoldUSD: string;
-      pnlUSD: string;
-      pnlPercentage: number;
-    }[]
-  > {
-    try {
-      // Validate inputs
-      if (!chain) {
-        throw new NotFoundException('Chain parameter is required');
-      }
-      if (!tokens || tokens.length === 0) {
-        throw new NotFoundException('At least one token address is required');
-      }
-
-      // Normalize token addresses to lowercase
-      const tokenAddresses = tokens.map((token) => token.toLowerCase());
-
-      // Fetch transactions for the given wallet, chain, and tokens
-      const transactions = await this.TransactionModel.find({
-        wallet: wallet.toLowerCase(),
-        chain: chain.toLowerCase(),
-        $or: [
-          { tokenInAddress: { $in: tokenAddresses } },
-          { tokenOutAddress: { $in: tokenAddresses } },
-        ],
-      }).exec();
-
-      if (!transactions || transactions.length === 0) {
-        throw new NotFoundException(
-          `No transactions found for wallet ${wallet} on chain ${chain} for the specified tokens`,
-        );
-      }
-
-      // Group transactions by token and calculate PNL
-      const tokenMap: {
-        [key: string]: {
-          tokenName: string;
-          tokenSymbol: string;
-          totalBuys: number;
-          totalSells: number;
-          totalTokenBought: number;
-          totalTokenBoughtUSD: number;
-          totalTokenSold: number;
-          totalTokenSoldUSD: number;
-        };
-      } = {};
-
-      // Initialize tokenMap with provided tokens to ensure all are included, even with no activity
-      tokenAddresses.forEach((tokenAddress) => {
-        tokenMap[tokenAddress] = {
-          tokenName: 'Unknown',
-          tokenSymbol: 'Unknown',
-          totalBuys: 0,
-          totalSells: 0,
-          totalTokenBought: 0,
-          totalTokenBoughtUSD: 0,
-          totalTokenSold: 0,
-          totalTokenSoldUSD: 0,
-        };
-      });
-
-      // Process transactions
-      transactions.forEach((tx) => {
-        // Handle token out (sell)
-        if (
-          tx.tokenOutAddress &&
-          tokenAddresses.includes(tx.tokenOutAddress.toLowerCase())
-        ) {
-          const tokenAddress = tx.tokenOutAddress.toLowerCase();
-          tokenMap[tokenAddress].tokenName = tx.tokenOutName || 'Unknown';
-          tokenMap[tokenAddress].tokenSymbol = tx.tokenOutSymbol || 'Unknown';
-          const amount = parseFloat(tx.tokenOutAmount) || 0;
-          const usd = parseFloat(tx.tokenOutAmountUsd) || 0;
-          tokenMap[tokenAddress].totalSells += 1;
-          tokenMap[tokenAddress].totalTokenSold += amount;
-          tokenMap[tokenAddress].totalTokenSoldUSD += usd;
-        }
-
-        // Handle token in (buy)
-        if (
-          tx.tokenInAddress &&
-          tokenAddresses.includes(tx.tokenInAddress.toLowerCase())
-        ) {
-          const tokenAddress = tx.tokenInAddress.toLowerCase();
-          tokenMap[tokenAddress].tokenName = tx.tokenInName || 'Unknown';
-          tokenMap[tokenAddress].tokenSymbol = tx.tokenInSymbol || 'Unknown';
-          const amount = parseFloat(tx.tokenInAmount) || 0;
-          const usd = parseFloat(tx.tokenInAmountUsd) || 0;
-          tokenMap[tokenAddress].totalBuys += 1;
-          tokenMap[tokenAddress].totalTokenBought += amount;
-          tokenMap[tokenAddress].totalTokenBoughtUSD += usd;
-        }
-      });
-
-      // Convert tokenMap to array and calculate PNL
-      const pnlResults = Object.keys(tokenMap).map((tokenAddress) => {
-        const token = tokenMap[tokenAddress];
-        const pnlUSD = token.totalTokenSoldUSD - token.totalTokenBoughtUSD;
-        const pnlPercentage =
-          token.totalTokenBoughtUSD !== 0
-            ? (pnlUSD / token.totalTokenBoughtUSD) * 100
-            : 0;
-
-        return {
-          tokenAddress,
-          tokenName: token.tokenName,
-          tokenSymbol: token.tokenSymbol,
-          tradeCount: token.totalBuys + token.totalSells,
-          totalBuys: token.totalBuys,
-          totalSells: token.totalSells,
-          totalTokenBought: token.totalTokenBought.toFixed(6), // String with 6 decimals
-          totalTokenBoughtUSD: token.totalTokenBoughtUSD.toFixed(2), // String with 2 decimals
-          totalTokenSold: token.totalTokenSold.toFixed(6), // String with 6 decimals
-          totalTokenSoldUSD: token.totalTokenSoldUSD.toFixed(2), // String with 2 decimals
-          pnlUSD: pnlUSD.toFixed(2), // String with 2 decimals
-          pnlPercentage: parseFloat(pnlPercentage.toFixed(2)), // Number with 2 decimals
-        };
-      });
-
-      return pnlResults;
-    } catch (error: any) {
-      console.error(
-        'Error calculating user token PNL:',
-        error.message || error,
-      );
-      throw error;
-    }
-  }
 
   async getUserTopHoldings(
     wallet: string,
@@ -688,105 +761,91 @@ export class UserService {
       tokenBalanceUSD: number;
     }[]
   > {
-    try {
-      // // Map chain names to chain IDs
-      // const chainMap: { [key: string]: string } = {
-      //   eth: '0x1', // Ethereum
-      //   bsc: '0x38', // Binance Smart Chain
-      //   base: '0x2105', // Base
-      // };
-      // const chainNumber = chainMap[chain.toLowerCase()];
-      if (!chain) {
-        throw new BadRequestException(`Unsupported chain`);
+    const maxAttempts = this.apiKeys.length;
+    let attempts = 0;
+    let initialKeyIndex: number;
+
+    while (attempts < maxAttempts) {
+      let apiKeyDoc = await this.CallModel.findOne();
+      if (!apiKeyDoc) {
+        apiKeyDoc = new this.CallModel({ call: 0 });
+        await apiKeyDoc.save();
       }
+      let currentKeyIndex = apiKeyDoc.call;
+      if (attempts === 0) initialKeyIndex = currentKeyIndex; // Store initial index
+      const currentApiKey = this.apiKeys[currentKeyIndex];
 
-      // API key rotation
-      const apiKeys = [
-        process.env.MORALIS_API_1,
-        process.env.MORALIS_API_2,
-        process.env.MORALIS_API_3,
-        process.env.MORALIS_API_4,
-        process.env.MORALIS_API_5,
-        process.env.MORALIS_API_6,
-        process.env.MORALIS_API_7,
-        process.env.MORALIS_API_8,
-        process.env.MORALIS_API_9,
-        process.env.MORALIS_API_10,
-        process.env.MORALIS_API_11,
-        process.env.MORALIS_API_12,
-        process.env.MORALIS_API_13,
-        process.env.MORALIS_API_14,
-        process.env.MORALIS_API_15,
-        process.env.MORALIS_API_16,
-        process.env.MORALIS_API_17,
-        process.env.MORALIS_API_18,
-        process.env.MORALIS_API_19,
-        process.env.MORALIS_API_20,
-        process.env.MORALIS_API_21,
-        process.env.MORALIS_API_22,
-        process.env.MORALIS_API_23,
-        process.env.MORALIS_API_24,
-        process.env.MORALIS_API_25,
-        process.env.MORALIS_API_26,
-        process.env.MORALIS_API_27,
-        process.env.MORALIS_API_28,
-        process.env.MORALIS_API_29,
-        process.env.MORALIS_API_30,
-        process.env.MORALIS_API_31,
-        process.env.MORALIS_API_32,
-        process.env.MORALIS_API_33,
-        process.env.MORALIS_API_34,
-        process.env.MORALIS_API_35,
-        process.env.MORALIS_API_36,
-        process.env.MORALIS_API_37,
-        process.env.MORALIS_API_38,
-        process.env.MORALIS_API_39,
-        process.env.MORALIS_API_40,
-        process.env.MORALIS_API_41,
-        process.env.MORALIS_API_42,
-        process.env.MORALIS_API_43,
-        process.env.MORALIS_API_44,
-        process.env.MORALIS_API_45,
-        process.env.MORALIS_API_46,
-        process.env.MORALIS_API_47,
-        process.env.MORALIS_API_48,
-        process.env.MORALIS_API_49,
-        process.env.MORALIS_API_50,
-      ].filter(Boolean); // Remove undefined keys
-      const apiKeyIndex = await this.CallModel.findOne();
-      const keyIndex = apiKeyIndex?.call ?? 48; // Fallback to 15 if undefined
-
-      // const keyIndex = 4;
-
-      const currentApiKey = apiKeys[keyIndex];
       if (!currentApiKey) {
         throw new Error('No valid Moralis API key available');
       }
 
-      const topHoldingsUrl = `https://deep-index.moralis.io/api/v2.2/wallets/${wallet}/tokens`;
+      try {
+        if (!chain) {
+          throw new BadRequestException(`Unsupported chain`);
+        }
 
-      const params = { chain: chain, exclude_spam: true, limit: 15 };
+        const topHoldingsUrl = `https://deep-index.moralis.io/api/v2.2/wallets/${wallet}/tokens`;
+        const params = { chain: chain, exclude_spam: true, limit: 15 };
 
-      const response = await this.httpService.axiosRef.get(topHoldingsUrl, {
-        params: params,
-        headers: { 'X-API-Key': currentApiKey },
-      });
-      const results = response.data.result || [];
+        const response = await this.httpService.axiosRef.get(topHoldingsUrl, {
+          params: params,
+          headers: { 'X-API-Key': currentApiKey },
+        });
+        const results = response.data.result || [];
 
-      return results.map((token) => ({
-        tokenAddress: token.token_address,
-        tokenName: token.name,
-        tokenSymbol: token.symbol,
-        tokenBalance: token.balance_formatted,
-        tokenBalanceUSD: token.usd_value,
-      }));
-    } catch (error: any) {
-      console.error(
-        'Error fetching user top  Holdings:',
-        error.message || error,
-      );
-      throw error;
+        return results.map((token) => ({
+          tokenAddress: token.token_address,
+          tokenName: token.name,
+          tokenSymbol: token.symbol,
+          tokenBalance: token.balance_formatted,
+          tokenBalanceUSD: token.usd_value,
+        }));
+      } catch (error: any) {
+        const errorMessage = error.response?.data?.message;
+        if (
+          errorMessage ===
+          'Validation service blocked: Your plan: free-plan-daily total included usage has been consumed, please upgrade your plan here, https://moralis.io/pricing'
+        ) {
+          apiKeyDoc = await this.CallModel.findOne();
+          currentKeyIndex = apiKeyDoc.call;
+          const keyWasUpdated = currentKeyIndex !== initialKeyIndex;
+
+          if (keyWasUpdated && attempts === 0) {
+            attempts++;
+            continue; // Retry with the externally updated key
+          }
+
+          await this.apiKeyMutex.runExclusive(async () => {
+            apiKeyDoc = await this.CallModel.findOne();
+            currentKeyIndex = apiKeyDoc.call;
+
+            if (currentKeyIndex < maxAttempts - 1) {
+              currentKeyIndex += 1;
+            } else {
+              currentKeyIndex = 0;
+              console.log(
+                'All API keys exhausted in getUserTopHoldings, resetting index to 0',
+              );
+            }
+            await this.CallModel.updateOne({}, { call: currentKeyIndex });
+            console.log(
+              `API key updated to index ${currentKeyIndex} in getUserTopHoldings`,
+            );
+          });
+          attempts++;
+        } else {
+          console.error(
+            'Error fetching user top holdings:',
+            error.message || error,
+          );
+          throw error;
+        }
+      }
     }
+
+    throw new Error(
+      `Failed to fetch top holdings for wallet ${wallet} on chain ${chain} after ${maxAttempts} attempts`,
+    );
   }
 
   async getPnlLeaderBoard(chain: string): Promise<
@@ -814,74 +873,16 @@ export class UserService {
         throw new BadRequestException('Chain parameter is required');
       }
 
-      // Fetch all users from UserModel
       const users = await this.UserModel.find().exec();
       if (!users || users.length === 0) {
         console.log('No users found');
         return [];
       }
 
-      // API keys
-      const apiKeys = [
-        process.env.MORALIS_API_1,
-        process.env.MORALIS_API_2,
-        process.env.MORALIS_API_3,
-        process.env.MORALIS_API_4,
-        process.env.MORALIS_API_5,
-        process.env.MORALIS_API_6,
-        process.env.MORALIS_API_7,
-        process.env.MORALIS_API_8,
-        process.env.MORALIS_API_9,
-        process.env.MORALIS_API_10,
-        process.env.MORALIS_API_11,
-        process.env.MORALIS_API_12,
-        process.env.MORALIS_API_13,
-        process.env.MORALIS_API_14,
-        process.env.MORALIS_API_15,
-        process.env.MORALIS_API_16,
-        process.env.MORALIS_API_17,
-        process.env.MORALIS_API_18,
-        process.env.MORALIS_API_19,
-        process.env.MORALIS_API_20,
-        process.env.MORALIS_API_21,
-        process.env.MORALIS_API_22,
-        process.env.MORALIS_API_23,
-        process.env.MORALIS_API_24,
-        process.env.MORALIS_API_25,
-        process.env.MORALIS_API_26,
-        process.env.MORALIS_API_27,
-        process.env.MORALIS_API_28,
-        process.env.MORALIS_API_29,
-        process.env.MORALIS_API_30,
-        process.env.MORALIS_API_31,
-        process.env.MORALIS_API_32,
-        process.env.MORALIS_API_33,
-        process.env.MORALIS_API_34,
-        process.env.MORALIS_API_35,
-        process.env.MORALIS_API_36,
-        process.env.MORALIS_API_37,
-        process.env.MORALIS_API_38,
-        process.env.MORALIS_API_39,
-        process.env.MORALIS_API_40,
-        process.env.MORALIS_API_41,
-        process.env.MORALIS_API_42,
-        process.env.MORALIS_API_43,
-        process.env.MORALIS_API_44,
-        process.env.MORALIS_API_45,
-        process.env.MORALIS_API_46,
-        process.env.MORALIS_API_47,
-        process.env.MORALIS_API_48,
-        process.env.MORALIS_API_49,
-        process.env.MORALIS_API_50,
-      ].filter(Boolean);
-      if (apiKeys.length === 0) {
+      if (this.apiKeys.length === 0) {
         throw new Error('No valid Moralis API keys available');
       }
 
-      // API key rotation state
-      let currentKeyIndex = 0;
-
-      // Default PNL summary for failed calls
       const defaultPnlSummary = {
         totalTradesCount: 0,
         totalPnlUSD: '0',
@@ -892,31 +893,31 @@ export class UserService {
         totalSellsUSD: '0',
       };
 
-      // Fetch PNL summary for each user with key rotation
       const pnlPromises = users.map(async (user) => {
         const url = `https://deep-index.moralis.io/api/v2.2/wallets/${user.wallet}/profitability/summary`;
         const params = { chain: chain };
-        let attempt = 0;
-        const maxAttempts = apiKeys.length;
+        const maxAttempts = this.apiKeys.length;
+        let attempts = 0;
+        let initialKeyIndex: number;
 
-        while (attempt < maxAttempts) {
+        while (attempts < maxAttempts) {
+          let apiKeyDoc = await this.CallModel.findOne();
+          if (!apiKeyDoc) {
+            apiKeyDoc = new this.CallModel({ call: 0 });
+            await apiKeyDoc.save();
+          }
+          let currentKeyIndex = apiKeyDoc.call;
+          if (attempts === 0) initialKeyIndex = currentKeyIndex; // Store initial index
+          const currentApiKey = this.apiKeys[currentKeyIndex];
+
           try {
             const response = await firstValueFrom(
               this.httpService.get(url, {
                 params,
-                headers: { 'X-API-Key': apiKeys[currentKeyIndex] },
+                headers: { 'X-API-Key': currentApiKey },
               }),
             );
-            // const response = await firstValueFrom(
-            //   this.httpService.get(url, {
-            //     params,
-            //     headers: { 'X-API-Key': apiKeys[4] },
-            //   }),
-            // );
             const summary = response.data || {};
-
-            // Rotate to next key after successful call
-            currentKeyIndex = (currentKeyIndex + 1) % apiKeys.length;
 
             return {
               name: user.name || 'Unknown',
@@ -937,16 +938,44 @@ export class UserService {
                 totalSellsUSD: summary.total_sold_volume_usd || '0',
               },
             };
-          } catch (error) {
-            console.error(
-              `Attempt ${attempt + 1} failed for wallet ${user.wallet} with key ${currentKeyIndex}:`,
-              error.message,
-            );
-            attempt++;
-            currentKeyIndex = (currentKeyIndex + 1) % apiKeys.length; // Rotate to next key on failure
+          } catch (error: any) {
+            const errorMessage = error.response?.data?.message;
+            if (
+              errorMessage ===
+              'Validation service blocked: Your plan: free-plan-daily total included usage has been consumed, please upgrade your plan here, https://moralis.io/pricing'
+            ) {
+              apiKeyDoc = await this.CallModel.findOne();
+              currentKeyIndex = apiKeyDoc.call;
+              const keyWasUpdated = currentKeyIndex !== initialKeyIndex;
 
-            if (attempt === maxAttempts) {
-              console.warn(`All API keys exhausted for wallet ${user.wallet}`);
+              if (keyWasUpdated && attempts === 0) {
+                attempts++;
+                continue; // Retry with the externally updated key
+              }
+
+              await this.apiKeyMutex.runExclusive(async () => {
+                apiKeyDoc = await this.CallModel.findOne();
+                currentKeyIndex = apiKeyDoc.call;
+
+                if (currentKeyIndex < maxAttempts - 1) {
+                  currentKeyIndex += 1;
+                } else {
+                  currentKeyIndex = 0;
+                  console.log(
+                    'All API keys exhausted in getPnlLeaderBoard, resetting index to 0',
+                  );
+                }
+                await this.CallModel.updateOne({}, { call: currentKeyIndex });
+                console.log(
+                  `API key updated to index ${currentKeyIndex} in getPnlLeaderBoard`,
+                );
+              });
+              attempts++;
+            } else {
+              console.error(
+                `Error fetching PNL for wallet ${user.wallet}:`,
+                error.message || error,
+              );
               return {
                 name: user.name || 'Unknown',
                 wallet: user.wallet,
@@ -955,13 +984,16 @@ export class UserService {
                 website: user.website || '',
                 chains: user.chains || [],
                 imageUrl: user.imageUrl || '',
-                pnlSummary: defaultPnlSummary, // Return default on final failure
+                pnlSummary: defaultPnlSummary,
               };
             }
           }
         }
+
+        console.warn(
+          `All API keys exhausted for wallet ${user.wallet} in getPnlLeaderBoard`,
+        );
         return {
-          // Fallback in case while loop logic fails (shouldn’t happen)
           name: user.name || 'Unknown',
           wallet: user.wallet,
           twitter: user.twitter || '',
@@ -973,16 +1005,11 @@ export class UserService {
         };
       });
 
-      // Wait for all PNL requests to complete
       const leaderboard = await Promise.all(pnlPromises);
-
-      // Filter out users with empty PNL data (zero trades)
       const filteredLeaderboard = leaderboard.filter(
         (entry) => entry.pnlSummary.totalTradesCount > 0,
       );
 
-      console.log(filteredLeaderboard);
-      // Sort by totalPnlUSD (descending order)
       filteredLeaderboard.sort((a, b) => {
         const pnlA = parseFloat(a.pnlSummary.totalPnlUSD);
         const pnlB = parseFloat(b.pnlSummary.totalPnlUSD);
@@ -996,7 +1023,10 @@ export class UserService {
     }
   }
 
-  async getBscPnlLeaderBoard(chain?: string): Promise<
+  async getDbPnlLeaderBoard(
+    chain?: string,
+    days: 'all' | '1' | '3' | '7' | '14' | '30' = 'all',
+  ): Promise<
     {
       name: string;
       wallet: string;
@@ -1017,71 +1047,113 @@ export class UserService {
     }[]
   > {
     try {
-      // Hardcode to BSC for this specific use case
-
-      // Fetch all users from UserModel
       const users = await this.UserModel.find().exec();
       if (!users || users.length === 0) {
         console.log('No users found');
         return [];
       }
 
-      // Default PNL summary for users with no transactions
       const defaultPnlSummary = {
         totalTradesCount: 0,
-        totalPnlUSD: '0',
+        totalPnlUSD: '0.00',
         totalPnlPercentage: 0,
         totalBuys: 0,
         totalSells: 0,
-        totalBuysUSD: '0',
-        totalSellsUSD: '0',
+        totalBuysUSD: '0.00',
+        totalSellsUSD: '0.00',
       };
 
-      // Calculate PNL for each user based on BSC transactions
+      const daysMap = { '1': 1, '3': 3, '7': 7, '14': 14, '30': 30 };
+      const dayCount = daysMap[days];
+      const timeFilter =
+        days === 'all' ? 'all' : (days as '1' | '3' | '7' | '14' | '30');
+
+      const WETH_PRICE = 2000; // Placeholder, replace with actual price source
+
       const pnlPromises = users.map(async (user) => {
-        // Fetch BSC transactions for this user
-        const transactions = await this.TransactionModel.find({
-          wallet: user.wallet.toLowerCase(),
-          chain: chain,
-        }).exec();
+        const tokenAddresses = [
+          ...new Set(
+            (
+              await this.TransactionModel.find({
+                wallet: user.wallet.toLowerCase(),
+                chain,
+                ...(days !== 'all' && {
+                  blockTimestamp: {
+                    $gte: new Date(Date.now() - dayCount * 24 * 60 * 60 * 1000),
+                  },
+                }),
+              }).exec()
+            )
+              .map((tx) => [tx.tokenInAddress, tx.tokenOutAddress])
+              .flat()
+              .filter((addr): addr is string => !!addr)
+              .map((addr) => addr.toLowerCase()),
+          ),
+        ];
 
-        // Initialize PNL summary
-        const totalTradesCount = transactions.length;
-        let totalBuys = 0;
-        let totalSells = 0;
-        let totalBuysUSD = 0;
-        let totalSellsUSD = 0;
+        if (tokenAddresses.length === 0) {
+          return {
+            name: user.name || 'Unknown',
+            wallet: user.wallet,
+            twitter: user.twitter || '',
+            telegram: user.telegram || '',
+            website: user.website || '',
+            chains: user.chains || [],
+            imageUrl: user.imageUrl || '',
+            pnlSummary: defaultPnlSummary,
+          };
+        }
 
-        // Process transactions
-        transactions.forEach((tx) => {
-          if (tx.tokenInAddress) {
-            totalBuys += 1;
-            totalBuysUSD += parseFloat(tx.tokenInAmountUsd) || 0;
-          }
-          if (tx.tokenOutAddress) {
-            totalSells += 1;
-            totalSellsUSD += parseFloat(tx.tokenOutAmountUsd) || 0;
-          }
-        });
+        const tokenPnls = await this.calculateUserTokensPnl(
+          user.wallet,
+          chain,
+          tokenAddresses,
+          timeFilter,
+        );
 
-        // Calculate PNL
-        const totalPnlUSD = totalSellsUSD - totalBuysUSD;
-        const totalPnlPercentage =
-          totalBuysUSD !== 0 ? (totalPnlUSD / totalBuysUSD) * 100 : 0;
+        const pnlSummary = tokenPnls.reduce(
+          (acc, tokenPnl) => {
+            // Ensure valid parsing with fallback to 0
+            const pnlUSD = parseFloat(tokenPnl.pnlUSD) || 0;
+            const buyAmount = parseFloat(tokenPnl.totalBuyTokenAmount) || 0;
+            const sellAmount = parseFloat(tokenPnl.totalSellTokenAmount) || 0;
 
-        // Format PNL summary
-        const pnlSummary =
-          transactions.length > 0
-            ? {
-                totalTradesCount,
-                totalPnlUSD: totalPnlUSD.toFixed(2), // String with 2 decimals
-                totalPnlPercentage: parseFloat(totalPnlPercentage.toFixed(2)), // Number with 2 decimals
-                totalBuys,
-                totalSells,
-                totalBuysUSD: totalBuysUSD.toFixed(2), // String with 2 decimals
-                totalSellsUSD: totalSellsUSD.toFixed(2), // String with 2 decimals
-              }
-            : defaultPnlSummary;
+            // Assuming amounts are in ETH (adjust if in wei)
+            const buyAmountEth = buyAmount; // Remove / 1e18 if already in ETH
+            const sellAmountEth = sellAmount;
+
+            acc.totalTradesCount += tokenPnl.tradeCount;
+            acc.totalBuys += tokenPnl.totalBuys;
+            acc.totalSells += tokenPnl.totalSells;
+            acc.totalBuysUSD += buyAmountEth * WETH_PRICE;
+            acc.totalSellsUSD += sellAmountEth * WETH_PRICE;
+            acc.totalPnlUSD += pnlUSD;
+
+            return acc;
+          },
+          {
+            totalTradesCount: 0,
+            totalBuys: 0,
+            totalSells: 0,
+            totalBuysUSD: 0,
+            totalSellsUSD: 0,
+            totalPnlUSD: 0,
+            totalPnlPercentage: 0,
+          },
+        );
+
+        // Calculate percentage only if there’s a basis (buys USD)
+        pnlSummary.totalPnlPercentage =
+          pnlSummary.totalBuysUSD !== 0
+            ? (pnlSummary.totalPnlUSD / pnlSummary.totalBuysUSD) * 100
+            : 0;
+
+        // Debugging log
+        console.log(`User: ${user.wallet}, Token PNLs:`, tokenPnls);
+        console.log(
+          `User: ${user.wallet}, Aggregated PNL Summary:`,
+          pnlSummary,
+        );
 
         return {
           name: user.name || 'Unknown',
@@ -1091,19 +1163,31 @@ export class UserService {
           website: user.website || '',
           chains: user.chains || [],
           imageUrl: user.imageUrl || '',
-          pnlSummary,
+          pnlSummary: {
+            totalTradesCount: pnlSummary.totalTradesCount,
+            totalPnlUSD: isNaN(pnlSummary.totalPnlUSD)
+              ? '0.00'
+              : pnlSummary.totalPnlUSD.toFixed(2),
+            totalPnlPercentage: isNaN(pnlSummary.totalPnlPercentage)
+              ? 0
+              : parseFloat(pnlSummary.totalPnlPercentage.toFixed(2)),
+            totalBuys: pnlSummary.totalBuys,
+            totalSells: pnlSummary.totalSells,
+            totalBuysUSD: isNaN(pnlSummary.totalBuysUSD)
+              ? '0.00'
+              : pnlSummary.totalBuysUSD.toFixed(2),
+            totalSellsUSD: isNaN(pnlSummary.totalSellsUSD)
+              ? '0.00'
+              : pnlSummary.totalSellsUSD.toFixed(2),
+          },
         };
       });
 
-      // Wait for all PNL calculations to complete
       const leaderboard = await Promise.all(pnlPromises);
-
-      // Filter out users with zero trades
       const filteredLeaderboard = leaderboard.filter(
         (entry) => entry.pnlSummary.totalTradesCount > 0,
       );
 
-      // Sort by totalPnlUSD (descending order)
       filteredLeaderboard.sort((a, b) => {
         const pnlA = parseFloat(a.pnlSummary.totalPnlUSD);
         const pnlB = parseFloat(b.pnlSummary.totalPnlUSD);
@@ -1112,10 +1196,7 @@ export class UserService {
 
       return filteredLeaderboard;
     } catch (error: any) {
-      console.error(
-        'Error fetching BSC PNL leaderboard:',
-        error.message || error,
-      );
+      console.error('Error fetching PNL leaderboard:', error.message || error);
       throw error;
     }
   }

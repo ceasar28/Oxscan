@@ -111,7 +111,11 @@ export class UserController {
 
   // Fetch PNL leaderboard for all users on a given chain
   @Get('pnl-leaderboard-v2')
-  async getBscPnlLeaderBoard(@Query('chain') chain?: string): Promise<
+  async getBscPnlLeaderBoard(
+    @Query('chain') chain: string,
+    @Query('duration')
+    timeFilter: 'all' | '1' | '3' | '7' | '14' | '30' = 'all',
+  ): Promise<
     {
       name: string;
       wallet: string;
@@ -135,7 +139,10 @@ export class UserController {
       throw new BadRequestException('Chain parameter is required');
     }
 
-    const leaderboard = await this.userService.getBscPnlLeaderBoard(chain);
+    const leaderboard = await this.userService.getDbPnlLeaderBoard(
+      chain,
+      timeFilter,
+    );
     if (!leaderboard || leaderboard.length === 0) {
       throw new NotFoundException(`No PNL data found for chain ${chain}`);
     }
@@ -178,6 +185,8 @@ export class UserController {
     @Param('wallet') wallet: string,
     @Query('chain') chain: string,
     @Query('tokens') tokens: string, // Expecting a comma-separated string of token addresses
+    @Query('duration')
+    timeFilter: 'all' | '1' | '3' | '7' | '14' | '30' = 'all',
   ): Promise<
     {
       tokenAddress: string;
@@ -186,12 +195,17 @@ export class UserController {
       tradeCount: number;
       totalBuys: number;
       totalSells: number;
-      totalTokenBought: string;
-      totalTokenBoughtUSD: string;
-      totalTokenSold: string;
-      totalTokenSoldUSD: string;
+      totalBuyTokenAmount: string;
+      buyTokenName: string;
+      buyTokenSymbol: string;
+      totalSellTokenAmount: string;
+      sellTokenName: string;
+      sellTokenSymbol: string;
+      tokenNetAmount: string;
       pnlUSD: string;
       pnlPercentage: number;
+      avgBuyTimeSeconds: number;
+      avgSellTimeSeconds: number;
     }[]
   > {
     if (!chain) {
@@ -207,6 +221,7 @@ export class UserController {
       wallet,
       chain,
       tokenArray,
+      timeFilter,
     );
     if (!results || results.length === 0) {
       throw new NotFoundException(
