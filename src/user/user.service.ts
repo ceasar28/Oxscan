@@ -734,11 +734,27 @@ export class UserService {
         process.env.MORALIS_API_30,
         process.env.MORALIS_API_31,
         process.env.MORALIS_API_32,
+        process.env.MORALIS_API_33,
         process.env.MORALIS_API_34,
         process.env.MORALIS_API_35,
+        process.env.MORALIS_API_36,
+        process.env.MORALIS_API_37,
+        process.env.MORALIS_API_38,
+        process.env.MORALIS_API_39,
+        process.env.MORALIS_API_40,
+        process.env.MORALIS_API_41,
+        process.env.MORALIS_API_42,
+        process.env.MORALIS_API_43,
+        process.env.MORALIS_API_44,
+        process.env.MORALIS_API_45,
+        process.env.MORALIS_API_46,
+        process.env.MORALIS_API_47,
+        process.env.MORALIS_API_48,
+        process.env.MORALIS_API_49,
+        process.env.MORALIS_API_50,
       ].filter(Boolean); // Remove undefined keys
       const apiKeyIndex = await this.CallModel.findOne();
-      const keyIndex = apiKeyIndex?.call ?? 15; // Fallback to 15 if undefined
+      const keyIndex = apiKeyIndex?.call ?? 48; // Fallback to 15 if undefined
 
       // const keyIndex = 4;
 
@@ -839,8 +855,24 @@ export class UserService {
         process.env.MORALIS_API_30,
         process.env.MORALIS_API_31,
         process.env.MORALIS_API_32,
+        process.env.MORALIS_API_33,
         process.env.MORALIS_API_34,
         process.env.MORALIS_API_35,
+        process.env.MORALIS_API_36,
+        process.env.MORALIS_API_37,
+        process.env.MORALIS_API_38,
+        process.env.MORALIS_API_39,
+        process.env.MORALIS_API_40,
+        process.env.MORALIS_API_41,
+        process.env.MORALIS_API_42,
+        process.env.MORALIS_API_43,
+        process.env.MORALIS_API_44,
+        process.env.MORALIS_API_45,
+        process.env.MORALIS_API_46,
+        process.env.MORALIS_API_47,
+        process.env.MORALIS_API_48,
+        process.env.MORALIS_API_49,
+        process.env.MORALIS_API_50,
       ].filter(Boolean);
       if (apiKeys.length === 0) {
         throw new Error('No valid Moralis API keys available');

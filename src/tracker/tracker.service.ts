@@ -119,11 +119,27 @@ export class TrackerService {
         process.env.MORALIS_API_30,
         process.env.MORALIS_API_31,
         process.env.MORALIS_API_32,
+        process.env.MORALIS_API_33,
         process.env.MORALIS_API_34,
         process.env.MORALIS_API_35,
+        process.env.MORALIS_API_36,
+        process.env.MORALIS_API_37,
+        process.env.MORALIS_API_38,
+        process.env.MORALIS_API_39,
+        process.env.MORALIS_API_40,
+        process.env.MORALIS_API_41,
+        process.env.MORALIS_API_42,
+        process.env.MORALIS_API_43,
+        process.env.MORALIS_API_44,
+        process.env.MORALIS_API_45,
+        process.env.MORALIS_API_46,
+        process.env.MORALIS_API_47,
+        process.env.MORALIS_API_48,
+        process.env.MORALIS_API_49,
+        process.env.MORALIS_API_50,
       ].filter(Boolean); // Remove undefined keys
       const apiKeyIndex = await this.CallModel.findOne();
-      const keyIndex = apiKeyIndex?.call ?? 34; // Fallback to 15 if undefined
+      const keyIndex = apiKeyIndex?.call ?? 49; // Fallback to 15 if undefined
 
       // const keyIndex = 5;
 
@@ -198,8 +214,24 @@ export class TrackerService {
       process.env.MORALIS_API_30,
       process.env.MORALIS_API_31,
       process.env.MORALIS_API_32,
+      process.env.MORALIS_API_33,
       process.env.MORALIS_API_34,
       process.env.MORALIS_API_35,
+      process.env.MORALIS_API_36,
+      process.env.MORALIS_API_37,
+      process.env.MORALIS_API_38,
+      process.env.MORALIS_API_39,
+      process.env.MORALIS_API_40,
+      process.env.MORALIS_API_41,
+      process.env.MORALIS_API_42,
+      process.env.MORALIS_API_43,
+      process.env.MORALIS_API_44,
+      process.env.MORALIS_API_45,
+      process.env.MORALIS_API_46,
+      process.env.MORALIS_API_47,
+      process.env.MORALIS_API_48,
+      process.env.MORALIS_API_49,
+      process.env.MORALIS_API_50,
     ];
 
     const swapUrl = `https://deep-index.moralis.io/api/v2.2/wallets/${walletAddress}/swaps?chain=eth&order=DESC`;
@@ -365,8 +397,24 @@ export class TrackerService {
       process.env.MORALIS_API_30,
       process.env.MORALIS_API_31,
       process.env.MORALIS_API_32,
+      process.env.MORALIS_API_33,
       process.env.MORALIS_API_34,
       process.env.MORALIS_API_35,
+      process.env.MORALIS_API_36,
+      process.env.MORALIS_API_37,
+      process.env.MORALIS_API_38,
+      process.env.MORALIS_API_39,
+      process.env.MORALIS_API_40,
+      process.env.MORALIS_API_41,
+      process.env.MORALIS_API_42,
+      process.env.MORALIS_API_43,
+      process.env.MORALIS_API_44,
+      process.env.MORALIS_API_45,
+      process.env.MORALIS_API_46,
+      process.env.MORALIS_API_47,
+      process.env.MORALIS_API_48,
+      process.env.MORALIS_API_49,
+      process.env.MORALIS_API_50,
     ];
 
     const swapUrl = `https://deep-index.moralis.io/api/v2.2/wallets/${walletAddress}/swaps?chain=bsc&order=DESC`;
@@ -530,8 +578,24 @@ export class TrackerService {
       process.env.MORALIS_API_30,
       process.env.MORALIS_API_31,
       process.env.MORALIS_API_32,
+      process.env.MORALIS_API_33,
       process.env.MORALIS_API_34,
       process.env.MORALIS_API_35,
+      process.env.MORALIS_API_36,
+      process.env.MORALIS_API_37,
+      process.env.MORALIS_API_38,
+      process.env.MORALIS_API_39,
+      process.env.MORALIS_API_40,
+      process.env.MORALIS_API_41,
+      process.env.MORALIS_API_42,
+      process.env.MORALIS_API_43,
+      process.env.MORALIS_API_44,
+      process.env.MORALIS_API_45,
+      process.env.MORALIS_API_46,
+      process.env.MORALIS_API_47,
+      process.env.MORALIS_API_48,
+      process.env.MORALIS_API_49,
+      process.env.MORALIS_API_50,
     ];
 
     const swapUrl = `https://deep-index.moralis.io/api/v2.2/wallets/${walletAddress}/swaps?chain=base&order=DESC`;
@@ -807,7 +871,7 @@ export class TrackerService {
   }
 
   // @Cron(process.env.CRON || '*/30 * * * * *') // Executes every 30 seconds
-  @Cron('*/4 * * * *')
+  @Cron('*/15 * * * *')
   async handleCron(): Promise<void> {
     try {
       this.logger.log('Executing token tracking cron job...');
@@ -828,7 +892,7 @@ export class TrackerService {
 
       // Calculate the new call index
       //TODO:
-      const newCall = (apiIndex.call + 1) % 35; // Increment and wrap back to 0 after 5
+      const newCall = (apiIndex.call + 1) % 50; // Increment and wrap back to 0 after 5
 
       // const min = 15;
       // const max = 34; // since array indices go from 0 to 34 for 35 elements
