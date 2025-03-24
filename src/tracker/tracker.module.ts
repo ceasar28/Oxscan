@@ -22,6 +22,7 @@ import { SocketGateway } from 'src/socket/socket.gateway';
       { name: Transaction.name, schema: TransactionSchema },
     ]),
   ],
+  exports: [TrackerService],
   providers: [TrackerService, SocketGateway],
   controllers: [TrackerController],
 })

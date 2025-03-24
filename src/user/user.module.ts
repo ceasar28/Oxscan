@@ -9,6 +9,7 @@ import {
 } from 'src/database/schemas/transactions.schema';
 import { Call, CallSchema } from 'src/database/schemas/moralisCalls.schema';
 import { HttpModule } from '@nestjs/axios';
+import { TrackerModule } from 'src/tracker/tracker.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { HttpModule } from '@nestjs/axios';
       { name: Transaction.name, schema: TransactionSchema },
     ]),
     MongooseModule.forFeature([{ name: Call.name, schema: CallSchema }]),
+    TrackerModule,
   ],
   providers: [UserService],
   controllers: [UserController],

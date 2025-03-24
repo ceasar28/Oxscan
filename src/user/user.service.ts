@@ -14,6 +14,7 @@ import { Call } from 'src/database/schemas/moralisCalls.schema';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { Mutex } from 'async-mutex';
+import { TrackerService } from 'src/tracker/tracker.service';
 
 @Injectable()
 export class UserService {
@@ -25,6 +26,7 @@ export class UserService {
     @InjectModel(Transaction.name)
     private readonly TransactionModel: Model<Transaction>,
     @InjectModel(Call.name) private readonly CallModel: Model<Call>,
+    private readonly trackerService: TrackerService,
   ) {}
 
   private readonly apiKeys = [
@@ -842,9 +844,15 @@ export class UserService {
               console.log(
                 'All API keys exhausted in getUserTopHoldings, resetting index to 0',
               );
+              await this.trackerService.sendChatMessage(
+                'All API keys exhausted in getUserTopHoldings, resetting index to 0',
+              );
             }
             await this.CallModel.updateOne({}, { call: currentKeyIndex });
             console.log(
+              `API key updated to index ${currentKeyIndex} in getUserTopHoldings`,
+            );
+            await this.trackerService.sendChatMessage(
               `API key updated to index ${currentKeyIndex} in getUserTopHoldings`,
             );
           });
@@ -982,9 +990,15 @@ export class UserService {
                   console.log(
                     'All API keys exhausted in getPnlLeaderBoard, resetting index to 0',
                   );
+                  await this.trackerService.sendChatMessage(
+                    'All API keys exhausted in getPnlLeaderBoard, resetting index to 0',
+                  );
                 }
                 await this.CallModel.updateOne({}, { call: currentKeyIndex });
                 console.log(
+                  `API key updated to index ${currentKeyIndex} in getPnlLeaderBoard`,
+                );
+                await this.trackerService.sendChatMessage(
                   `API key updated to index ${currentKeyIndex} in getPnlLeaderBoard`,
                 );
               });
@@ -1011,6 +1025,7 @@ export class UserService {
         console.warn(
           `All API keys exhausted for wallet ${user.wallet} in getPnlLeaderBoard`,
         );
+
         return {
           name: user.name || 'Unknown',
           wallet: user.wallet,

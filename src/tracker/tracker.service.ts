@@ -8,6 +8,7 @@ import { Transaction } from 'src/database/schemas/transactions.schema';
 import { User, UserDocument } from 'src/database/schemas/user.schema';
 import { SocketGateway } from 'src/socket/socket.gateway';
 import { Mutex } from 'async-mutex';
+import * as TelegramBot from 'node-telegram-bot-api';
 
 export type TransactionDocument = Transaction & Document;
 
@@ -15,6 +16,10 @@ export type TransactionDocument = Transaction & Document;
 export class TrackerService {
   private readonly logger = new Logger(TrackerService.name);
   private readonly apiKeyMutex = new Mutex();
+  private readonly trackerBot: TelegramBot;
+
+  private readonly token = process.env.TEST_TOKEN;
+  private readonly chatId = process.env.CHAT_ID;
 
   constructor(
     private readonly httpService: HttpService,
@@ -23,7 +28,10 @@ export class TrackerService {
     @InjectModel(Transaction.name)
     private readonly TransactionModel: Model<TransactionDocument>,
     private readonly socketGateway: SocketGateway,
-  ) {}
+  ) {
+    this.trackerBot = new TelegramBot(this.token, { polling: true });
+    this.trackerBot.on('message', this.handleRecievedMessages);
+  }
 
   private readonly apiKeys = [
     process.env.MORALIS_API_1,
@@ -77,6 +85,59 @@ export class TrackerService {
     process.env.MORALIS_API_49,
     process.env.MORALIS_API_50,
   ].filter(Boolean);
+
+  handleRecievedMessages = async (
+    msg: TelegramBot.Message,
+  ): Promise<unknown> => {
+    this.logger.debug(msg);
+    try {
+      await this.trackerBot.sendChatAction(msg.chat.id, 'typing');
+      if (msg.text.trim() === '/start') {
+        const username: string = `${msg.from.username}`;
+
+        return await this.trackerBot.sendMessage(
+          msg.chat.id,
+          `Hey @${username}\nWelcome to moralis API key tracker`,
+        );
+      } else if (msg.text.trim() === '/key') {
+        try {
+          const keyIndex = await this.CallModel.findOne();
+
+          if (!keyIndex) {
+            await this.trackerBot.sendChatAction(msg.chat.id, 'typing');
+            return await this.trackerBot.sendMessage(
+              msg.chat.id,
+              `There is no API Key`,
+            );
+          }
+          const currentKeyIndex = keyIndex.call;
+          // const currentApiKey = this.apiKeys[currentKeyIndex];
+
+          return await this.trackerBot.sendMessage(
+            msg.chat.id,
+            `Current Key index is ${currentKeyIndex}`,
+          );
+        } catch (error) {
+          console.log(error);
+        }
+      }
+    } catch (error) {
+      console.log(error);
+      return await this.trackerBot.sendMessage(
+        msg.chat.id,
+        'There was an error processing your message',
+      );
+    }
+  };
+
+  async sendChatMessage(message) {
+    try {
+      await this.trackerBot.sendChatAction(this.chatId, 'typing');
+      return await this.trackerBot.sendMessage(this.chatId, message);
+    } catch (error) {
+      console.log(error);
+    }
+  }
 
   async getGasPrice() {
     try {
@@ -312,9 +373,15 @@ export class TrackerService {
               console.log(
                 'All API keys exhausted in getTokenMetadata, resetting index to 0',
               );
+              await this.sendChatMessage(
+                `All API keys exhausted in getTokenMetadata, resetting index to 0`,
+              );
             }
             await this.CallModel.updateOne({}, { call: currentKeyIndex });
             console.log(
+              `API key updated to index ${currentKeyIndex} in getTokenMetadata`,
+            );
+            await this.sendChatMessage(
               `API key updated to index ${currentKeyIndex} in getTokenMetadata`,
             );
           });
@@ -516,12 +583,18 @@ export class TrackerService {
             console.log(
               'All API keys exhausted during cron, resetting index to 0',
             );
+            await this.sendChatMessage(
+              `All API keys exhausted during cron, resetting index to 0`,
+            );
           } else {
             newKeyIndex += 1; // Shouldn’t happen, but increment as fallback
           }
           await this.CallModel.updateOne({}, { call: newKeyIndex });
           console.log(
             `API key updated to index ${newKeyIndex} after cron failure`,
+          );
+          await this.sendChatMessage(
+            `API key updated to index ${newKeyIndex} in getTokenMetadata`,
           );
         });
       }
@@ -536,6 +609,7 @@ export class TrackerService {
     try {
       this.logger.log('reseting ...');
       await this.CallModel.updateOne({}, { call: 0 });
+      await this.sendChatMessage(`reseting API keys for the day... to 0`);
     } catch (error) {
       console.log(error);
     }
