@@ -139,6 +139,47 @@ export class TrackerService {
     }
   }
 
+  async pingKey() {
+    const address = process.env.EVM_WALLET;
+
+    const apiKeyDoc = await this.CallModel.findOne();
+
+    const currentKeyIndex = apiKeyDoc.call;
+
+    const currentApiKey = this.apiKeys[currentKeyIndex];
+
+    try {
+      const balance = this.httpService.axiosRef.get(
+        `https://deep-index.moralis.io/api/v2.2/${address}/balance`,
+        { headers: { 'X-API-Key': currentApiKey } },
+      );
+
+      const [balanceResponse] = await Promise.all([balance]);
+
+      if (balanceResponse.data) {
+        await this.sendChatMessage(
+          `✅ KEY index ${currentApiKey} is ...STILL LIVE✅\n`,
+        );
+      }
+    } catch (apiError: any) {
+      const errorMessage = apiError.response?.data?.message;
+      if (
+        errorMessage ===
+          'Validation service blocked: Your plan: free-plan-daily total included usage has been consumed, please upgrade your plan here, https://moralis.io/pricing' ||
+        errorMessage === 'SUPPORT BLOCKED: Please contact support@moralis.io'
+      ) {
+        return await this.sendChatMessage(
+          `❌ KEY index ${currentApiKey} is ...down ❌\n\n MESSAGE:${errorMessage} `,
+        );
+      } else {
+        await this.sendChatMessage(
+          `❌Server error ❌\n\n MESSAGE:${apiError} `,
+        );
+        throw apiError; // Re-throw unexpected errors
+      }
+    }
+  }
+
   async getGasPrice() {
     try {
       const bnbPricePromise = this.httpService.axiosRef.get(
