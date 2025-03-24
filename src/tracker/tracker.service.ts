@@ -160,7 +160,7 @@ export class TrackerService {
 
       if (balanceResponse.data) {
         await this.sendChatMessage(
-          `✅ KEY index ${currentApiKey} is ...STILL LIVE✅\n`,
+          `✅ KEY index ${currentKeyIndex} is ...STILL LIVE✅\n`,
         );
       }
     } catch (apiError: any) {
@@ -171,7 +171,7 @@ export class TrackerService {
         errorMessage === 'SUPPORT BLOCKED: Please contact support@moralis.io'
       ) {
         return await this.sendChatMessage(
-          `❌ KEY index ${currentApiKey} is ...down ❌\n\n MESSAGE:${errorMessage} `,
+          `❌ KEY index ${currentKeyIndex} is ...down ❌\n\n MESSAGE:${errorMessage} `,
         );
       } else {
         await this.sendChatMessage(
