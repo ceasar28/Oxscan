@@ -120,6 +120,8 @@ export class TrackerService {
         } catch (error) {
           console.log(error);
         }
+      } else if (msg.text.trim() === '/ping') {
+        return await this.pingKey();
       }
     } catch (error) {
       console.log(error);
