@@ -138,7 +138,8 @@ export class TrackerService {
       const errorMessage = apiError.response?.data?.message;
       if (
         errorMessage ===
-        'Validation service blocked: Your plan: free-plan-daily total included usage has been consumed, please upgrade your plan here, https://moralis.io/pricing'
+          'Validation service blocked: Your plan: free-plan-daily total included usage has been consumed, please upgrade your plan here, https://moralis.io/pricing' ||
+        errorMessage === 'SUPPORT BLOCKED: Please contact support@moralis.io'
       ) {
         throw new Error(
           `API key at index ${currentKeyIndex} exhausted for wallet ${walletAddress}`,
@@ -285,7 +286,8 @@ export class TrackerService {
         const errorMessage = apiError.response?.data?.message;
         if (
           errorMessage ===
-          'Validation service blocked: Your plan: free-plan-daily total included usage has been consumed, please upgrade your plan here, https://moralis.io/pricing'
+            'Validation service blocked: Your plan: free-plan-daily total included usage has been consumed, please upgrade your plan here, https://moralis.io/pricing' ||
+          errorMessage === 'SUPPORT BLOCKED: Please contact support@moralis.io'
         ) {
           // Check if the call index was updated by another request
           apiKeyDoc = await this.CallModel.findOne();
@@ -484,7 +486,7 @@ export class TrackerService {
   }
 
   // @Cron('*/30 * * * * *') // Executes every 30 seconds
-  @Cron('*/10 * * * *')
+  @Cron('*/30 * * * *')
   async handleCron(): Promise<void> {
     let initialKeyIndex: number;
     try {
@@ -526,7 +528,7 @@ export class TrackerService {
     }
   }
 
-  @Cron('0 30 9 * * *', {
+  @Cron('0 3 9 * * *', {
     name: 'resetCallModelData',
     timeZone: 'Africa/Lagos',
   })

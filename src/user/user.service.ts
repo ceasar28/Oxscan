@@ -804,7 +804,8 @@ export class UserService {
         const errorMessage = error.response?.data?.message;
         if (
           errorMessage ===
-          'Validation service blocked: Your plan: free-plan-daily total included usage has been consumed, please upgrade your plan here, https://moralis.io/pricing'
+            'Validation service blocked: Your plan: free-plan-daily total included usage has been consumed, please upgrade your plan here, https://moralis.io/pricing' ||
+          errorMessage === 'SUPPORT BLOCKED: Please contact support@moralis.io'
         ) {
           apiKeyDoc = await this.CallModel.findOne();
           currentKeyIndex = apiKeyDoc.call;
@@ -942,7 +943,9 @@ export class UserService {
             const errorMessage = error.response?.data?.message;
             if (
               errorMessage ===
-              'Validation service blocked: Your plan: free-plan-daily total included usage has been consumed, please upgrade your plan here, https://moralis.io/pricing'
+                'Validation service blocked: Your plan: free-plan-daily total included usage has been consumed, please upgrade your plan here, https://moralis.io/pricing' ||
+              errorMessage ===
+                'SUPPORT BLOCKED: Please contact support@moralis.io'
             ) {
               apiKeyDoc = await this.CallModel.findOne();
               currentKeyIndex = apiKeyDoc.call;
