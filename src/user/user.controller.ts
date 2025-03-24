@@ -198,9 +198,11 @@ export class UserController {
       totalBuyTokenAmount: string;
       buyTokenName: string;
       buyTokenSymbol: string;
+      totalBuyTokenAmountUSD: string; // New field
       totalSellTokenAmount: string;
       sellTokenName: string;
       sellTokenSymbol: string;
+      totalSellTokenAmountUSD: string; // New field
       tokenNetAmount: string;
       pnlUSD: string;
       pnlPercentage: number;

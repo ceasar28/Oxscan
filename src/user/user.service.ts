@@ -422,9 +422,11 @@ export class UserService {
       totalBuyTokenAmount: string;
       buyTokenName: string;
       buyTokenSymbol: string;
+      totalBuyTokenAmountUSD: string; // New field
       totalSellTokenAmount: string;
       sellTokenName: string;
       sellTokenSymbol: string;
+      totalSellTokenAmountUSD: string; // New field
       tokenNetAmount: string;
       pnlUSD: string;
       pnlPercentage: number;
@@ -475,11 +477,13 @@ export class UserService {
           totalTokenBought: number;
           totalTokenBoughtUSD: number;
           totalBuyTokenAmount: number;
+          totalBuyTokenAmountUSD: number; // New field
           buyTokenName: string;
           buyTokenSymbol: string;
           totalTokenSold: number;
           totalTokenSoldUSD: number;
           totalSellTokenAmount: number;
+          totalSellTokenAmountUSD: number; // New field
           sellTokenName: string;
           sellTokenSymbol: string;
           buyTimeSum: number;
@@ -496,11 +500,13 @@ export class UserService {
           totalTokenBought: 0,
           totalTokenBoughtUSD: 0,
           totalBuyTokenAmount: 0,
+          totalBuyTokenAmountUSD: 0, // Initialize new field
           buyTokenName: 'Unknown',
           buyTokenSymbol: 'Unknown',
           totalTokenSold: 0,
           totalTokenSoldUSD: 0,
           totalSellTokenAmount: 0,
+          totalSellTokenAmountUSD: 0, // Initialize new field
           sellTokenName: 'Unknown',
           sellTokenSymbol: 'Unknown',
           buyTimeSum: 0,
@@ -529,10 +535,12 @@ export class UserService {
           const amountBought = Math.abs(parseFloat(tx.tokenInAmount) || 0);
           const usdBought = Math.abs(parseFloat(tx.tokenInAmountUsd) || 0);
           const amountSpent = Math.abs(parseFloat(tx.tokenOutAmount) || 0);
+          const usdSpent = Math.abs(parseFloat(tx.tokenOutAmountUsd) || 0); // USD value of token spent
           tokenData.totalBuys += 1;
           tokenData.totalTokenBought += amountBought;
           tokenData.totalTokenBoughtUSD += usdBought;
           tokenData.totalBuyTokenAmount += amountSpent;
+          tokenData.totalBuyTokenAmountUSD += usdSpent; // Accumulate USD spent
           tokenData.buyTokenName = tx.tokenOutName || 'Unknown';
           tokenData.buyTokenSymbol = tx.tokenOutSymbol || 'Unknown';
           const buyTimeDiff = (Date.now() - txTimestamp) / 1000;
@@ -546,10 +554,12 @@ export class UserService {
           const amountSold = Math.abs(parseFloat(tx.tokenOutAmount) || 0);
           const usdSold = Math.abs(parseFloat(tx.tokenOutAmountUsd) || 0);
           const amountReceived = Math.abs(parseFloat(tx.tokenInAmount) || 0);
+          const usdReceived = Math.abs(parseFloat(tx.tokenInAmountUsd) || 0); // USD value of token received
           tokenData.totalSells += 1;
           tokenData.totalTokenSold += amountSold;
           tokenData.totalTokenSoldUSD += usdSold;
           tokenData.totalSellTokenAmount += amountReceived;
+          tokenData.totalSellTokenAmountUSD += usdReceived; // Accumulate USD received
           tokenData.sellTokenName = tx.tokenInName || 'Unknown';
           tokenData.sellTokenSymbol = tx.tokenInSymbol || 'Unknown';
           const sellTimeDiff = (Date.now() - txTimestamp) / 1000;
@@ -563,7 +573,10 @@ export class UserService {
         const tokenNetAmount = token.totalTokenBought - token.totalTokenSold;
 
         // Prorate the bought USD to the sold portion
-        const soldProportion = token.totalTokenSold / token.totalTokenBought;
+        const soldProportion =
+          token.totalTokenBought !== 0
+            ? token.totalTokenSold / token.totalTokenBought
+            : 0;
         const proratedBoughtUSD = token.totalTokenBoughtUSD * soldProportion;
         const pnlUSD = token.totalTokenSoldUSD - proratedBoughtUSD;
         const pnlPercentage =
@@ -584,9 +597,11 @@ export class UserService {
           totalBuyTokenAmount: token.totalBuyTokenAmount.toFixed(6),
           buyTokenName: token.buyTokenName,
           buyTokenSymbol: token.buyTokenSymbol,
+          totalBuyTokenAmountUSD: token.totalBuyTokenAmountUSD.toFixed(2), // New field
           totalSellTokenAmount: token.totalSellTokenAmount.toFixed(6),
           sellTokenName: token.sellTokenName,
           sellTokenSymbol: token.sellTokenSymbol,
+          totalSellTokenAmountUSD: token.totalSellTokenAmountUSD.toFixed(2), // New field
           tokenNetAmount: tokenNetAmount.toFixed(6),
           pnlUSD: pnlUSD.toFixed(2),
           pnlPercentage: parseFloat(pnlPercentage.toFixed(2)),
