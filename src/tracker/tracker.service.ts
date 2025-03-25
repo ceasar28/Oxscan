@@ -651,7 +651,11 @@ export class TrackerService {
     }
   }
 
-  @Cron('0 1 10 * * *', {
+  // @Cron('0 1 10 * * *', {
+  //   name: 'resetCallModelData',
+  //   timeZone: 'Africa/Lagos',
+  // })
+  @Cron('0 0 15 * * *', {
     name: 'resetCallModelData',
     timeZone: 'Africa/Lagos',
   })
