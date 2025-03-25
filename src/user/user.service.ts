@@ -51,13 +51,13 @@ interface PnlLeaderboardEntry {
     totalTradesCount: number;
     profitableTrades: number;
     losingTrades: number;
-    totalBaseTokenGained: string; // Net WETH/WBNB gained
-    totalBaseTokenGainedUSD: string;
-    totalBaseTokenLost: string; // Net WETH/WBNB lost
-    totalBaseTokenLostUSD: string;
-    netBaseTokenPnl: string; // (Gained - Lost)
-    netBaseTokenPnlUSD: string;
-    totalPnlPercentage: number;
+    totalBaseTokenInvested: string; // Total WETH/WBNB spent
+    totalBaseTokenInvestedUSD: string; // USD value of investments
+    totalBaseTokenRealized: string; // Total WETH/WBNB received
+    totalBaseTokenRealizedUSD: string; // USD value of realized gains
+    baseTokenGain: string; // Realized - Invested (net ETH/BNB)
+    baseTokenGainUSD: string; // USD value of net gain
+    totalPnlPercentage: number; // ROI percentage
     totalBuys: number;
     totalSells: number;
   };
@@ -150,12 +150,12 @@ export class UserService {
         totalTradesCount: 0,
         profitableTrades: 0,
         losingTrades: 0,
-        totalBaseTokenGained: '0.000000',
-        totalBaseTokenGainedUSD: '0.00',
-        totalBaseTokenLost: '0.000000',
-        totalBaseTokenLostUSD: '0.00',
-        netBaseTokenPnl: '0.000000',
-        netBaseTokenPnlUSD: '0.00',
+        totalBaseTokenInvested: '0.000000',
+        totalBaseTokenInvestedUSD: '0.00',
+        totalBaseTokenRealized: '0.000000',
+        totalBaseTokenRealizedUSD: '0.00',
+        baseTokenGain: '0.000000',
+        baseTokenGainUSD: '0.00',
         totalPnlPercentage: 0,
         totalBuys: 0,
         totalSells: 0,
@@ -1542,10 +1542,10 @@ export class UserService {
       if (!users?.length) return [];
 
       const cutoffDate = this.getCutoffDate(timeFilter);
+      // const baseTokenSymbol = chain === 'bsc' ? 'WBNB' : 'WETH';
 
       const leaderboardEntries = await Promise.all(
         users.map(async (user) => {
-          // Find all transactions for this user and time period
           const transactions = await this.TransactionModel.find({
             wallet: user.wallet.toLowerCase(),
             ...(chain && { chain: chain.toLowerCase() }),
@@ -1556,7 +1556,6 @@ export class UserService {
             return this.createEmptyLeaderboardEntry(user);
           }
 
-          // Get unique token addresses from transactions
           const tokenAddresses = [
             ...new Set(
               transactions
@@ -1566,7 +1565,6 @@ export class UserService {
             ),
           ];
 
-          // Calculate PnL for each token
           const tokenPnls = await this.calculateUserTokensPnl(
             user.wallet,
             chain || user.chains[0],
@@ -1574,51 +1572,46 @@ export class UserService {
             timeFilter,
           );
 
-          // Aggregate statistics
-          const stats = tokenPnls.reduce(
+          const aggregated = tokenPnls.reduce(
             (acc, tokenPnl) => {
-              const baseTokenPnl = parseFloat(tokenPnl.baseTokenPnl) || 0;
-              const baseTokenPnlUSD = parseFloat(tokenPnl.realizedPnlUSD) || 0;
+              acc.totalInvested +=
+                parseFloat(tokenPnl.totalBaseTokenSpent) || 0;
+              acc.investedUSD +=
+                parseFloat(tokenPnl.totalBaseTokenSpentUSD) || 0;
+              acc.totalRealized +=
+                parseFloat(tokenPnl.totalBaseTokenReceived) || 0;
+              acc.realizedUSD +=
+                parseFloat(tokenPnl.totalBaseTokenReceivedUSD) || 0;
 
-              acc.totalTrades += tokenPnl.tradeCount;
+              const tokenGain = parseFloat(tokenPnl.baseTokenPnl) || 0;
+              if (tokenGain > 0) acc.profitableTrades++;
+              else if (tokenGain < 0) acc.losingTrades++;
+
               acc.totalBuys += tokenPnl.totalBuys;
               acc.totalSells += tokenPnl.totalSells;
-
-              if (baseTokenPnl > 0) {
-                acc.profitableTrades++;
-                acc.totalBaseTokenGained += baseTokenPnl;
-                acc.totalBaseTokenGainedUSD += baseTokenPnlUSD;
-              } else if (baseTokenPnl < 0) {
-                acc.losingTrades++;
-                acc.totalBaseTokenLost += Math.abs(baseTokenPnl);
-                acc.totalBaseTokenLostUSD += Math.abs(baseTokenPnlUSD);
-              }
 
               return acc;
             },
             {
-              totalTrades: 0,
+              totalInvested: 0,
+              investedUSD: 0,
+              totalRealized: 0,
+              realizedUSD: 0,
               profitableTrades: 0,
               losingTrades: 0,
               totalBuys: 0,
               totalSells: 0,
-              totalBaseTokenGained: 0,
-              totalBaseTokenGainedUSD: 0,
-              totalBaseTokenLost: 0,
-              totalBaseTokenLostUSD: 0,
             },
           );
 
-          // Calculate net PnL
-          const netBaseTokenPnl =
-            stats.totalBaseTokenGained - stats.totalBaseTokenLost;
-          const netBaseTokenPnlUSD =
-            stats.totalBaseTokenGainedUSD - stats.totalBaseTokenLostUSD;
-          const totalInvestment =
-            stats.totalBaseTokenLostUSD + stats.totalBaseTokenGainedUSD;
-          const pnlPercentage =
-            totalInvestment > 0
-              ? (netBaseTokenPnlUSD / totalInvestment) * 100
+          // Calculate net gains
+          const baseTokenGain =
+            aggregated.totalRealized - aggregated.totalInvested;
+          const baseTokenGainUSD =
+            aggregated.realizedUSD - aggregated.investedUSD;
+          const roiPercentage =
+            aggregated.investedUSD > 0
+              ? (baseTokenGainUSD / aggregated.investedUSD) * 100
               : 0;
 
           return {
@@ -1630,31 +1623,41 @@ export class UserService {
             chains: user.chains || [],
             imageUrl: user.imageUrl || '',
             pnlSummary: {
-              totalTradesCount: stats.totalTrades,
-              profitableTrades: stats.profitableTrades,
-              losingTrades: stats.losingTrades,
-              totalBaseTokenGained: stats.totalBaseTokenGained.toFixed(6),
-              totalBaseTokenGainedUSD: stats.totalBaseTokenGainedUSD.toFixed(2),
-              totalBaseTokenLost: stats.totalBaseTokenLost.toFixed(6),
-              totalBaseTokenLostUSD: stats.totalBaseTokenLostUSD.toFixed(2),
-              netBaseTokenPnl: netBaseTokenPnl.toFixed(6),
-              netBaseTokenPnlUSD: netBaseTokenPnlUSD.toFixed(2),
-              totalPnlPercentage: parseFloat(pnlPercentage.toFixed(2)),
-              totalBuys: stats.totalBuys,
-              totalSells: stats.totalSells,
+              totalTradesCount: aggregated.totalBuys + aggregated.totalSells,
+              profitableTrades: aggregated.profitableTrades,
+              losingTrades: aggregated.losingTrades,
+              totalBaseTokenInvested: aggregated.totalInvested.toFixed(6),
+              totalBaseTokenInvestedUSD: aggregated.investedUSD.toFixed(2),
+              totalBaseTokenRealized: aggregated.totalRealized.toFixed(6),
+              totalBaseTokenRealizedUSD: aggregated.realizedUSD.toFixed(2),
+              baseTokenGain: baseTokenGain.toFixed(6),
+              baseTokenGainUSD: baseTokenGainUSD.toFixed(2),
+              totalPnlPercentage: parseFloat(roiPercentage.toFixed(2)),
+              totalBuys: aggregated.totalBuys,
+              totalSells: aggregated.totalSells,
             },
           };
         }),
       );
 
-      // Sort by netBaseTokenPnlUSD (highest to lowest)
-      return leaderboardEntries.sort((a, b) => {
-        const netA = parseFloat(a.pnlSummary.netBaseTokenPnlUSD);
-        const netB = parseFloat(b.pnlSummary.netBaseTokenPnlUSD);
-        return netB - netA; // Descending order
-      });
+      // Sort by baseTokenGainUSD (descending)
+      return leaderboardEntries
+        .filter((entry) => entry.pnlSummary.totalTradesCount > 0)
+        .sort((a, b) => {
+          const gainA = parseFloat(a.pnlSummary.baseTokenGainUSD);
+          const gainB = parseFloat(b.pnlSummary.baseTokenGainUSD);
+
+          // Primary sort by USD gain (highest first)
+          if (gainB > gainA) return 1;
+          if (gainB < gainA) return -1;
+
+          // Secondary sort by ROI percentage
+          return (
+            b.pnlSummary.totalPnlPercentage - a.pnlSummary.totalPnlPercentage
+          );
+        });
     } catch (error) {
-      console.error('Error generating PnL leaderboard:', error);
+      console.error('Error generating leaderboard:', error);
       throw new Error('Failed to generate leaderboard');
     }
   }

@@ -51,13 +51,13 @@ interface PnlLeaderboardEntry {
     totalTradesCount: number;
     profitableTrades: number;
     losingTrades: number;
-    totalBaseTokenGained: string; // Net WETH/WBNB gained
-    totalBaseTokenGainedUSD: string;
-    totalBaseTokenLost: string; // Net WETH/WBNB lost
-    totalBaseTokenLostUSD: string;
-    netBaseTokenPnl: string; // (Gained - Lost)
-    netBaseTokenPnlUSD: string;
-    totalPnlPercentage: number;
+    totalBaseTokenInvested: string; // Total WETH/WBNB spent
+    totalBaseTokenInvestedUSD: string; // USD value of investments
+    totalBaseTokenRealized: string; // Total WETH/WBNB received
+    totalBaseTokenRealizedUSD: string; // USD value of realized gains
+    baseTokenGain: string; // Realized - Invested (net ETH/BNB)
+    baseTokenGainUSD: string; // USD value of net gain
+    totalPnlPercentage: number; // ROI percentage
     totalBuys: number;
     totalSells: number;
   };
