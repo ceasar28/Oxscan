@@ -91,6 +91,7 @@ export class TrackerService {
   ): Promise<unknown> => {
     this.logger.debug(msg);
     try {
+      const match = msg.text.trim().match(/^\/ping (\d+)$/);
       await this.trackerBot.sendChatAction(msg.chat.id, 'typing');
       if (msg.text.trim() === '/start') {
         const username: string = `${msg.from.username}`;
@@ -122,6 +123,9 @@ export class TrackerService {
         }
       } else if (msg.text.trim() === '/ping') {
         return await this.pingKey();
+      } else if (match) {
+        const number = parseInt(match[1], 10);
+        return await this.pingKey(number);
       }
     } catch (error) {
       console.log(error);
@@ -141,16 +145,18 @@ export class TrackerService {
     }
   }
 
-  async pingKey() {
+  async pingKey(key?: number) {
     const address = process.env.EVM_WALLET;
-
-    const apiKeyDoc = await this.CallModel.findOne();
-
-    const currentKeyIndex = apiKeyDoc.call;
-
-    const currentApiKey = this.apiKeys[currentKeyIndex];
-
+    let currentKeyIndex;
+    if (key !== undefined) {
+      currentKeyIndex = key;
+    } else {
+      const apiKeyDoc = await this.CallModel.findOne();
+      currentKeyIndex = apiKeyDoc.call;
+    }
     try {
+      console.log(currentKeyIndex);
+      const currentApiKey = this.apiKeys[currentKeyIndex];
       const balance = this.httpService.axiosRef.get(
         `https://deep-index.moralis.io/api/v2.2/${address}/balance`,
         { headers: { 'X-API-Key': currentApiKey } },
@@ -165,6 +171,7 @@ export class TrackerService {
       }
     } catch (apiError: any) {
       const errorMessage = apiError.response?.data?.message;
+
       if (
         errorMessage ===
           'Validation service blocked: Your plan: free-plan-daily total included usage has been consumed, please upgrade your plan here, https://moralis.io/pricing' ||
