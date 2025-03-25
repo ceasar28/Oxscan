@@ -16,6 +16,53 @@ import { firstValueFrom } from 'rxjs';
 import { Mutex } from 'async-mutex';
 import { TrackerService } from 'src/tracker/tracker.service';
 
+interface TokenPnlResult {
+  tokenAddress: string;
+  tokenName: string;
+  tokenSymbol: string;
+  tradeCount: number;
+  totalBuys: number;
+  totalSells: number;
+  totalBaseTokenSpent: string; // WBNB/WETH spent to buy
+  totalBaseTokenSpentUSD: string; // USD value of base token spent
+  totalTokenBought: string; // Total tokens bought
+  totalTokenBoughtUSD: string; // USD value of tokens bought
+  totalTokenSold: string; // Total tokens sold
+  totalTokenSoldUSD: string; // USD value of tokens sold
+  totalBaseTokenReceived: string; // WBNB/WETH received from selling
+  totalBaseTokenReceivedUSD: string; // USD value of base token received
+  tokenNetAmount: string; // (Bought - Sold) token balance
+  baseTokenPnl: string; // Profit/Loss in base token (WBNB/WETH)
+  realizedPnlUSD: string; // Profit/Loss in USD
+  realizedPnlPercentage: number; // Percentage gain/loss
+  avgBuyTimeSeconds: number;
+  avgSellTimeSeconds: number;
+}
+
+interface PnlLeaderboardEntry {
+  name: string;
+  wallet: string;
+  twitter: string;
+  telegram: string;
+  website: string;
+  chains: string[];
+  imageUrl: string;
+  pnlSummary: {
+    totalTradesCount: number;
+    profitableTrades: number;
+    losingTrades: number;
+    totalBaseTokenGained: string; // Net WETH/WBNB gained
+    totalBaseTokenGainedUSD: string;
+    totalBaseTokenLost: string; // Net WETH/WBNB lost
+    totalBaseTokenLostUSD: string;
+    netBaseTokenPnl: string; // (Gained - Lost)
+    netBaseTokenPnlUSD: string;
+    totalPnlPercentage: number;
+    totalBuys: number;
+    totalSells: number;
+  };
+}
+
 @Injectable()
 export class UserService {
   private readonly logger = new Logger(UserService.name);
@@ -81,6 +128,40 @@ export class UserService {
     process.env.MORALIS_API_49,
     process.env.MORALIS_API_50,
   ].filter(Boolean);
+
+  private getCutoffDate(timeFilter: string): string | null {
+    const daysMap = { '1': 1, '3': 3, '7': 7, '14': 14, '30': 30 };
+    if (timeFilter === 'all') return null;
+
+    const days = daysMap[timeFilter] || 0;
+    return new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+  }
+
+  private createEmptyLeaderboardEntry(user: any): PnlLeaderboardEntry {
+    return {
+      name: user.name || 'Unknown',
+      wallet: user.wallet,
+      twitter: user.twitter || '',
+      telegram: user.telegram || '',
+      website: user.website || '',
+      chains: user.chains || [],
+      imageUrl: user.imageUrl || '',
+      pnlSummary: {
+        totalTradesCount: 0,
+        profitableTrades: 0,
+        losingTrades: 0,
+        totalBaseTokenGained: '0.000000',
+        totalBaseTokenGainedUSD: '0.00',
+        totalBaseTokenLost: '0.000000',
+        totalBaseTokenLostUSD: '0.00',
+        netBaseTokenPnl: '0.000000',
+        netBaseTokenPnlUSD: '0.00',
+        totalPnlPercentage: 0,
+        totalBuys: 0,
+        totalSells: 0,
+      },
+    };
+  }
 
   // Create a new user
   async newUser(userDto: UserDto): Promise<UserDto> {
@@ -408,224 +489,11 @@ export class UserService {
     }
   }
 
-  async calculateUserTokensPnl(
-    wallet: string,
-    chain: string,
-    tokens: string[],
-    timeFilter: 'all' | '1' | '3' | '7' | '14' | '30' = 'all',
-  ): Promise<
-    {
-      tokenAddress: string;
-      tokenName: string;
-      tokenSymbol: string;
-      tradeCount: number;
-      totalBuys: number;
-      totalSells: number;
-      totalBuyTokenAmount: string;
-      buyTokenName: string;
-      buyTokenSymbol: string;
-      totalBuyTokenAmountUSD: string; // New field
-      totalSellTokenAmount: string;
-      sellTokenName: string;
-      sellTokenSymbol: string;
-      totalSellTokenAmountUSD: string; // New field
-      tokenNetAmount: string;
-      pnlUSD: string;
-      pnlPercentage: number;
-      avgBuyTimeSeconds: number;
-      avgSellTimeSeconds: number;
-    }[]
-  > {
-    try {
-      if (!chain) {
-        throw new NotFoundException('Chain parameter is required');
-      }
-      if (!tokens || tokens.length === 0) {
-        throw new NotFoundException('At least one token address is required');
-      }
-
-      const tokenAddresses = tokens.map((token) => token.toLowerCase());
-      const daysMap = { '1': 1, '3': 3, '7': 7, '14': 14, '30': 30 };
-      const days = daysMap[timeFilter];
-      const cutoffDate = days
-        ? new Date(Date.now() - days * 24 * 60 * 60 * 1000)
-        : null;
-
-      const query: any = {
-        wallet: wallet.toLowerCase(),
-        chain: chain.toLowerCase(),
-        $or: [
-          { tokenInAddress: { $in: tokenAddresses } },
-          { tokenOutAddress: { $in: tokenAddresses } },
-        ],
-      };
-      if (timeFilter !== 'all') {
-        query.blockTimestamp = { $gte: cutoffDate };
-      }
-
-      const transactions = await this.TransactionModel.find(query).exec();
-      if (!transactions || transactions.length === 0) {
-        throw new NotFoundException(
-          `No transactions found for wallet ${wallet} on chain ${chain} for the specified tokens${timeFilter !== 'all' ? ` in the last ${days} days` : ''}`,
-        );
-      }
-
-      const tokenMap: {
-        [key: string]: {
-          tokenName: string;
-          tokenSymbol: string;
-          totalBuys: number;
-          totalSells: number;
-          totalTokenBought: number;
-          totalTokenBoughtUSD: number;
-          totalBuyTokenAmount: number;
-          totalBuyTokenAmountUSD: number; // New field
-          buyTokenName: string;
-          buyTokenSymbol: string;
-          totalTokenSold: number;
-          totalTokenSoldUSD: number;
-          totalSellTokenAmount: number;
-          totalSellTokenAmountUSD: number; // New field
-          sellTokenName: string;
-          sellTokenSymbol: string;
-          buyTimeSum: number;
-          sellTimeSum: number;
-        };
-      } = {};
-
-      tokenAddresses.forEach((tokenAddress) => {
-        tokenMap[tokenAddress] = {
-          tokenName: 'Unknown',
-          tokenSymbol: 'Unknown',
-          totalBuys: 0,
-          totalSells: 0,
-          totalTokenBought: 0,
-          totalTokenBoughtUSD: 0,
-          totalBuyTokenAmount: 0,
-          totalBuyTokenAmountUSD: 0, // Initialize new field
-          buyTokenName: 'Unknown',
-          buyTokenSymbol: 'Unknown',
-          totalTokenSold: 0,
-          totalTokenSoldUSD: 0,
-          totalSellTokenAmount: 0,
-          totalSellTokenAmountUSD: 0, // Initialize new field
-          sellTokenName: 'Unknown',
-          sellTokenSymbol: 'Unknown',
-          buyTimeSum: 0,
-          sellTimeSum: 0,
-        };
-      });
-
-      transactions.forEach((tx) => {
-        const txTimestamp = new Date(tx.blockTimestamp).getTime();
-        const tokenAddress = tokenAddresses.find(
-          (addr) =>
-            addr === tx.tokenInAddress?.toLowerCase() ||
-            addr === tx.tokenOutAddress?.toLowerCase(),
-        );
-
-        if (!tokenAddress) return;
-
-        const tokenData = tokenMap[tokenAddress];
-
-        if (
-          tx.type === 'buy' &&
-          tx.tokenInAddress?.toLowerCase() === tokenAddress
-        ) {
-          tokenData.tokenName = tx.tokenInName || 'Unknown';
-          tokenData.tokenSymbol = tx.tokenInSymbol || 'Unknown';
-          const amountBought = Math.abs(parseFloat(tx.tokenInAmount) || 0);
-          const usdBought = Math.abs(parseFloat(tx.tokenInAmountUsd) || 0);
-          const amountSpent = Math.abs(parseFloat(tx.tokenOutAmount) || 0);
-          const usdSpent = Math.abs(parseFloat(tx.tokenOutAmountUsd) || 0); // USD value of token spent
-          tokenData.totalBuys += 1;
-          tokenData.totalTokenBought += amountBought;
-          tokenData.totalTokenBoughtUSD += usdBought;
-          tokenData.totalBuyTokenAmount += amountSpent;
-          tokenData.totalBuyTokenAmountUSD += usdSpent; // Accumulate USD spent
-          tokenData.buyTokenName = tx.tokenOutName || 'Unknown';
-          tokenData.buyTokenSymbol = tx.tokenOutSymbol || 'Unknown';
-          const buyTimeDiff = (Date.now() - txTimestamp) / 1000;
-          tokenData.buyTimeSum += buyTimeDiff;
-        } else if (
-          tx.type === 'sell' &&
-          tx.tokenOutAddress?.toLowerCase() === tokenAddress
-        ) {
-          tokenData.tokenName = tx.tokenOutName || 'Unknown';
-          tokenData.tokenSymbol = tx.tokenOutSymbol || 'Unknown';
-          const amountSold = Math.abs(parseFloat(tx.tokenOutAmount) || 0);
-          const usdSold = Math.abs(parseFloat(tx.tokenOutAmountUsd) || 0);
-          const amountReceived = Math.abs(parseFloat(tx.tokenInAmount) || 0);
-          const usdReceived = Math.abs(parseFloat(tx.tokenInAmountUsd) || 0); // USD value of token received
-          tokenData.totalSells += 1;
-          tokenData.totalTokenSold += amountSold;
-          tokenData.totalTokenSoldUSD += usdSold;
-          tokenData.totalSellTokenAmount += amountReceived;
-          tokenData.totalSellTokenAmountUSD += usdReceived; // Accumulate USD received
-          tokenData.sellTokenName = tx.tokenInName || 'Unknown';
-          tokenData.sellTokenSymbol = tx.tokenInSymbol || 'Unknown';
-          const sellTimeDiff = (Date.now() - txTimestamp) / 1000;
-          tokenData.sellTimeSum += sellTimeDiff;
-        }
-      });
-
-      const pnlResults = Object.keys(tokenMap).map((tokenAddress) => {
-        const token = tokenMap[tokenAddress];
-        const tradeCount = token.totalBuys + token.totalSells;
-        const tokenNetAmount = token.totalTokenBought - token.totalTokenSold;
-
-        // Prorate the bought USD to the sold portion
-        const soldProportion =
-          token.totalTokenBought !== 0
-            ? token.totalTokenSold / token.totalTokenBought
-            : 0;
-        const proratedBoughtUSD = token.totalTokenBoughtUSD * soldProportion;
-        const pnlUSD = token.totalTokenSoldUSD - proratedBoughtUSD;
-        const pnlPercentage =
-          proratedBoughtUSD !== 0 ? (pnlUSD / proratedBoughtUSD) * 100 : 0;
-
-        const avgBuyTimeSeconds =
-          token.totalBuys > 0 ? token.buyTimeSum / token.totalBuys : 0;
-        const avgSellTimeSeconds =
-          token.totalSells > 0 ? token.sellTimeSum / token.totalSells : 0;
-
-        return {
-          tokenAddress,
-          tokenName: token.tokenName,
-          tokenSymbol: token.tokenSymbol,
-          tradeCount,
-          totalBuys: token.totalBuys,
-          totalSells: token.totalSells,
-          totalBuyTokenAmount: token.totalBuyTokenAmount.toFixed(6),
-          buyTokenName: token.buyTokenName,
-          buyTokenSymbol: token.buyTokenSymbol,
-          totalBuyTokenAmountUSD: token.totalBuyTokenAmountUSD.toFixed(2), // New field
-          totalSellTokenAmount: token.totalSellTokenAmount.toFixed(6),
-          sellTokenName: token.sellTokenName,
-          sellTokenSymbol: token.sellTokenSymbol,
-          totalSellTokenAmountUSD: token.totalSellTokenAmountUSD.toFixed(2), // New field
-          tokenNetAmount: tokenNetAmount.toFixed(6),
-          pnlUSD: pnlUSD.toFixed(2),
-          pnlPercentage: parseFloat(pnlPercentage.toFixed(2)),
-          avgBuyTimeSeconds: parseFloat(avgBuyTimeSeconds.toFixed(2)),
-          avgSellTimeSeconds: parseFloat(avgSellTimeSeconds.toFixed(2)),
-        };
-      });
-
-      return pnlResults;
-    } catch (error: any) {
-      console.error(
-        'Error calculating user token PNL:',
-        error.message || error,
-      );
-      throw error;
-    }
-  }
-
   // async calculateUserTokensPnl(
   //   wallet: string,
   //   chain: string,
   //   tokens: string[],
+  //   timeFilter: 'all' | '1' | '3' | '7' | '14' | '30' = 'all',
   // ): Promise<
   //   {
   //     tokenAddress: string;
@@ -634,16 +502,22 @@ export class UserService {
   //     tradeCount: number;
   //     totalBuys: number;
   //     totalSells: number;
-  //     totalTokenBought: string;
-  //     totalTokenBoughtUSD: string;
-  //     totalTokenSold: string;
-  //     totalTokenSoldUSD: string;
+  //     totalBuyTokenAmount: string;
+  //     buyTokenName: string;
+  //     buyTokenSymbol: string;
+  //     totalBuyTokenAmountUSD: string; // New field
+  //     totalSellTokenAmount: string;
+  //     sellTokenName: string;
+  //     sellTokenSymbol: string;
+  //     totalSellTokenAmountUSD: string; // New field
+  //     tokenNetAmount: string;
   //     pnlUSD: string;
   //     pnlPercentage: number;
+  //     avgBuyTimeSeconds: number;
+  //     avgSellTimeSeconds: number;
   //   }[]
   // > {
   //   try {
-  //     // Validate inputs
   //     if (!chain) {
   //       throw new NotFoundException('Chain parameter is required');
   //     }
@@ -651,26 +525,32 @@ export class UserService {
   //       throw new NotFoundException('At least one token address is required');
   //     }
 
-  //     // Normalize token addresses to lowercase
   //     const tokenAddresses = tokens.map((token) => token.toLowerCase());
+  //     const daysMap = { '1': 1, '3': 3, '7': 7, '14': 14, '30': 30 };
+  //     const days = daysMap[timeFilter];
+  //     const cutoffDate = days
+  //       ? new Date(Date.now() - days * 24 * 60 * 60 * 1000)
+  //       : null;
 
-  //     // Fetch transactions for the given wallet, chain, and tokens
-  //     const transactions = await this.TransactionModel.find({
+  //     const query: any = {
   //       wallet: wallet.toLowerCase(),
   //       chain: chain.toLowerCase(),
   //       $or: [
   //         { tokenInAddress: { $in: tokenAddresses } },
   //         { tokenOutAddress: { $in: tokenAddresses } },
   //       ],
-  //     }).exec();
+  //     };
+  //     if (timeFilter !== 'all') {
+  //       query.blockTimestamp = { $gte: cutoffDate };
+  //     }
 
+  //     const transactions = await this.TransactionModel.find(query).exec();
   //     if (!transactions || transactions.length === 0) {
   //       throw new NotFoundException(
-  //         `No transactions found for wallet ${wallet} on chain ${chain} for the specified tokens`,
+  //         `No transactions found for wallet ${wallet} on chain ${chain} for the specified tokens${timeFilter !== 'all' ? ` in the last ${days} days` : ''}`,
   //       );
   //     }
 
-  //     // Group transactions by token and calculate PNL
   //     const tokenMap: {
   //       [key: string]: {
   //         tokenName: string;
@@ -679,12 +559,21 @@ export class UserService {
   //         totalSells: number;
   //         totalTokenBought: number;
   //         totalTokenBoughtUSD: number;
+  //         totalBuyTokenAmount: number;
+  //         totalBuyTokenAmountUSD: number; // New field
+  //         buyTokenName: string;
+  //         buyTokenSymbol: string;
   //         totalTokenSold: number;
   //         totalTokenSoldUSD: number;
+  //         totalSellTokenAmount: number;
+  //         totalSellTokenAmountUSD: number; // New field
+  //         sellTokenName: string;
+  //         sellTokenSymbol: string;
+  //         buyTimeSum: number;
+  //         sellTimeSum: number;
   //       };
   //     } = {};
 
-  //     // Initialize tokenMap with provided tokens to ensure all are included, even with no activity
   //     tokenAddresses.forEach((tokenAddress) => {
   //       tokenMap[tokenAddress] = {
   //         tokenName: 'Unknown',
@@ -693,66 +582,114 @@ export class UserService {
   //         totalSells: 0,
   //         totalTokenBought: 0,
   //         totalTokenBoughtUSD: 0,
+  //         totalBuyTokenAmount: 0,
+  //         totalBuyTokenAmountUSD: 0, // Initialize new field
+  //         buyTokenName: 'Unknown',
+  //         buyTokenSymbol: 'Unknown',
   //         totalTokenSold: 0,
   //         totalTokenSoldUSD: 0,
+  //         totalSellTokenAmount: 0,
+  //         totalSellTokenAmountUSD: 0, // Initialize new field
+  //         sellTokenName: 'Unknown',
+  //         sellTokenSymbol: 'Unknown',
+  //         buyTimeSum: 0,
+  //         sellTimeSum: 0,
   //       };
   //     });
 
-  //     // Process transactions
   //     transactions.forEach((tx) => {
-  //       // Handle token out (sell)
-  //       if (
-  //         tx.tokenOutAddress &&
-  //         tokenAddresses.includes(tx.tokenOutAddress.toLowerCase())
-  //       ) {
-  //         const tokenAddress = tx.tokenOutAddress.toLowerCase();
-  //         tokenMap[tokenAddress].tokenName = tx.tokenOutName || 'Unknown';
-  //         tokenMap[tokenAddress].tokenSymbol = tx.tokenOutSymbol || 'Unknown';
-  //         const amount = parseFloat(tx.tokenOutAmount) || 0;
-  //         const usd = parseFloat(tx.tokenOutAmountUsd) || 0;
-  //         tokenMap[tokenAddress].totalSells += 1;
-  //         tokenMap[tokenAddress].totalTokenSold += amount;
-  //         tokenMap[tokenAddress].totalTokenSoldUSD += usd;
-  //       }
+  //       const txTimestamp = new Date(tx.blockTimestamp).getTime();
+  //       const tokenAddress = tokenAddresses.find(
+  //         (addr) =>
+  //           addr === tx.tokenInAddress?.toLowerCase() ||
+  //           addr === tx.tokenOutAddress?.toLowerCase(),
+  //       );
 
-  //       // Handle token in (buy)
+  //       if (!tokenAddress) return;
+
+  //       const tokenData = tokenMap[tokenAddress];
+
   //       if (
-  //         tx.tokenInAddress &&
-  //         tokenAddresses.includes(tx.tokenInAddress.toLowerCase())
+  //         tx.type === 'buy' &&
+  //         tx.tokenInAddress?.toLowerCase() === tokenAddress
   //       ) {
-  //         const tokenAddress = tx.tokenInAddress.toLowerCase();
-  //         tokenMap[tokenAddress].tokenName = tx.tokenInName || 'Unknown';
-  //         tokenMap[tokenAddress].tokenSymbol = tx.tokenInSymbol || 'Unknown';
-  //         const amount = parseFloat(tx.tokenInAmount) || 0;
-  //         const usd = parseFloat(tx.tokenInAmountUsd) || 0;
-  //         tokenMap[tokenAddress].totalBuys += 1;
-  //         tokenMap[tokenAddress].totalTokenBought += amount;
-  //         tokenMap[tokenAddress].totalTokenBoughtUSD += usd;
+  //         tokenData.tokenName = tx.tokenInName || 'Unknown';
+  //         tokenData.tokenSymbol = tx.tokenInSymbol || 'Unknown';
+  //         const amountBought = Math.abs(parseFloat(tx.tokenInAmount) || 0);
+  //         const usdBought = Math.abs(parseFloat(tx.tokenInAmountUsd) || 0);
+  //         const amountSpent = Math.abs(parseFloat(tx.tokenOutAmount) || 0);
+  //         const usdSpent = Math.abs(parseFloat(tx.tokenOutAmountUsd) || 0); // USD value of token spent
+  //         tokenData.totalBuys += 1;
+  //         tokenData.totalTokenBought += amountBought;
+  //         tokenData.totalTokenBoughtUSD += usdBought;
+  //         tokenData.totalBuyTokenAmount += amountSpent;
+  //         tokenData.totalBuyTokenAmountUSD += usdSpent; // Accumulate USD spent
+  //         tokenData.buyTokenName = tx.tokenOutName || 'Unknown';
+  //         tokenData.buyTokenSymbol = tx.tokenOutSymbol || 'Unknown';
+  //         const buyTimeDiff = (Date.now() - txTimestamp) / 1000;
+  //         tokenData.buyTimeSum += buyTimeDiff;
+  //       } else if (
+  //         tx.type === 'sell' &&
+  //         tx.tokenOutAddress?.toLowerCase() === tokenAddress
+  //       ) {
+  //         tokenData.tokenName = tx.tokenOutName || 'Unknown';
+  //         tokenData.tokenSymbol = tx.tokenOutSymbol || 'Unknown';
+  //         const amountSold = Math.abs(parseFloat(tx.tokenOutAmount) || 0);
+  //         const usdSold = Math.abs(parseFloat(tx.tokenOutAmountUsd) || 0);
+  //         const amountReceived = Math.abs(parseFloat(tx.tokenInAmount) || 0);
+  //         const usdReceived = Math.abs(parseFloat(tx.tokenInAmountUsd) || 0); // USD value of token received
+  //         tokenData.totalSells += 1;
+  //         tokenData.totalTokenSold += amountSold;
+  //         tokenData.totalTokenSoldUSD += usdSold;
+  //         tokenData.totalSellTokenAmount += amountReceived;
+  //         tokenData.totalSellTokenAmountUSD += usdReceived; // Accumulate USD received
+  //         tokenData.sellTokenName = tx.tokenInName || 'Unknown';
+  //         tokenData.sellTokenSymbol = tx.tokenInSymbol || 'Unknown';
+  //         const sellTimeDiff = (Date.now() - txTimestamp) / 1000;
+  //         tokenData.sellTimeSum += sellTimeDiff;
   //       }
   //     });
 
-  //     // Convert tokenMap to array and calculate PNL
   //     const pnlResults = Object.keys(tokenMap).map((tokenAddress) => {
   //       const token = tokenMap[tokenAddress];
-  //       const pnlUSD = token.totalTokenSoldUSD - token.totalTokenBoughtUSD;
-  //       const pnlPercentage =
-  //         token.totalTokenBoughtUSD !== 0
-  //           ? (pnlUSD / token.totalTokenBoughtUSD) * 100
+  //       const tradeCount = token.totalBuys + token.totalSells;
+  //       const tokenNetAmount = token.totalTokenBought - token.totalTokenSold;
+
+  //       // Prorate the bought USD to the sold portion
+  //       const soldProportion =
+  //         token.totalTokenBought !== 0
+  //           ? token.totalTokenSold / token.totalTokenBought
   //           : 0;
+  //       const proratedBoughtUSD = token.totalTokenBoughtUSD * soldProportion;
+  //       const pnlUSD = token.totalTokenSoldUSD - proratedBoughtUSD;
+  //       const pnlPercentage =
+  //         proratedBoughtUSD !== 0 ? (pnlUSD / proratedBoughtUSD) * 100 : 0;
+
+  //       const avgBuyTimeSeconds =
+  //         token.totalBuys > 0 ? token.buyTimeSum / token.totalBuys : 0;
+  //       const avgSellTimeSeconds =
+  //         token.totalSells > 0 ? token.sellTimeSum / token.totalSells : 0;
 
   //       return {
   //         tokenAddress,
   //         tokenName: token.tokenName,
   //         tokenSymbol: token.tokenSymbol,
-  //         tradeCount: token.totalBuys + token.totalSells,
+  //         tradeCount,
   //         totalBuys: token.totalBuys,
   //         totalSells: token.totalSells,
-  //         totalTokenBought: token.totalTokenBought.toFixed(6), // String with 6 decimals
-  //         totalTokenBoughtUSD: token.totalTokenBoughtUSD.toFixed(2), // String with 2 decimals
-  //         totalTokenSold: token.totalTokenSold.toFixed(6), // String with 6 decimals
-  //         totalTokenSoldUSD: token.totalTokenSoldUSD.toFixed(2), // String with 2 decimals
-  //         pnlUSD: pnlUSD.toFixed(2), // String with 2 decimals
-  //         pnlPercentage: parseFloat(pnlPercentage.toFixed(2)), // Number with 2 decimals
+  //         totalBuyTokenAmount: token.totalBuyTokenAmount.toFixed(6),
+  //         buyTokenName: token.buyTokenName,
+  //         buyTokenSymbol: token.buyTokenSymbol,
+  //         totalBuyTokenAmountUSD: token.totalBuyTokenAmountUSD.toFixed(2), // New field
+  //         totalSellTokenAmount: token.totalSellTokenAmount.toFixed(6),
+  //         sellTokenName: token.sellTokenName,
+  //         sellTokenSymbol: token.sellTokenSymbol,
+  //         totalSellTokenAmountUSD: token.totalSellTokenAmountUSD.toFixed(2), // New field
+  //         tokenNetAmount: tokenNetAmount.toFixed(6),
+  //         pnlUSD: pnlUSD.toFixed(2),
+  //         pnlPercentage: parseFloat(pnlPercentage.toFixed(2)),
+  //         avgBuyTimeSeconds: parseFloat(avgBuyTimeSeconds.toFixed(2)),
+  //         avgSellTimeSeconds: parseFloat(avgSellTimeSeconds.toFixed(2)),
   //       };
   //     });
 
@@ -765,6 +702,368 @@ export class UserService {
   //     throw error;
   //   }
   // }
+
+  // async calculateUserTokensPnl(
+  //   wallet: string,
+  //   chain: string,
+  //   tokens: string[],
+  //   timeFilter: 'all' | '1' | '3' | '7' | '14' | '30' = 'all',
+  // ): Promise<TokenPnlResult[]> {
+  //   // Validate inputs
+  //   if (!chain) throw new NotFoundException('Chain parameter is required');
+  //   if (!tokens?.length)
+  //     throw new NotFoundException('At least one token address is required');
+
+  //   // Determine base token symbol based on chain
+  //   const baseTokenSymbol = chain.toLowerCase() === 'bsc' ? 'WBNB' : 'WETH';
+
+  //   // Calculate cutoff date if time filter is specified
+  //   const daysMap = { '1': 1, '3': 3, '7': 7, '14': 14, '30': 30 };
+  //   const days = daysMap[timeFilter];
+  //   const cutoffDate = days
+  //     ? new Date(Date.now() - days * 24 * 60 * 60 * 1000)
+  //     : null;
+
+  //   // Build query to fetch relevant transactions
+  //   const query: any = {
+  //     wallet: wallet.toLowerCase(),
+  //     chain: chain.toLowerCase(),
+  //     $or: [
+  //       { tokenOutAddress: { $in: tokens.map((t) => t.toLowerCase()) } },
+  //       { tokenInAddress: { $in: tokens.map((t) => t.toLowerCase()) } },
+  //     ],
+  //   };
+
+  //   if (timeFilter !== 'all') {
+  //     query.blockTimestamp = { $gte: cutoffDate };
+  //   }
+
+  //   // Fetch transactions from database
+  //   const transactions = await this.TransactionModel.find(query).exec();
+  //   if (!transactions.length) {
+  //     throw new NotFoundException(
+  //       `No transactions found for wallet ${wallet} on chain ${chain} for the specified tokens${timeFilter !== 'all' ? ` in the last ${days} days` : ''}`,
+  //     );
+  //   }
+
+  //   // Process transactions for each token
+  //   return tokens.map((tokenAddress) => {
+  //     const tokenLower = tokenAddress.toLowerCase();
+  //     const tokenTransactions = transactions.filter(
+  //       (tx) =>
+  //         tx.tokenInAddress?.toLowerCase() === tokenLower ||
+  //         tx.tokenOutAddress?.toLowerCase() === tokenLower,
+  //     );
+
+  //     // Initialize data structure for this token
+  //     const tokenData = {
+  //       tokenName: 'Unknown',
+  //       tokenSymbol: 'Unknown',
+  //       totalBuys: 0,
+  //       totalSells: 0,
+  //       totalBaseTokenSpent: 0, // WBNB/WETH spent to buy
+  //       totalBaseTokenSpentUSD: 0, // USD value of base token spent
+  //       totalTokenBought: 0, // Total tokens bought
+  //       totalTokenBoughtUSD: 0, // USD value of tokens bought
+  //       totalTokenSold: 0, // Total tokens sold
+  //       totalTokenSoldUSD: 0, // USD value of tokens sold
+  //       totalBaseTokenReceived: 0, // WBNB/WETH received from selling
+  //       totalBaseTokenReceivedUSD: 0, // USD value of base token received
+  //       totalCostBasisUSD: 0, // Total USD spent buying all tokens
+  //       buyTimeSum: 0,
+  //       sellTimeSum: 0,
+  //     };
+
+  //     // Process each transaction
+  //     tokenTransactions.forEach((tx) => {
+  //       const txTimestamp = new Date(tx.blockTimestamp).getTime();
+  //       const isBuy =
+  //         tx.type === 'buy' &&
+  //         tx.tokenInAddress?.toLowerCase() === tokenLower &&
+  //         tx.tokenOutSymbol === baseTokenSymbol;
+
+  //       const isSell =
+  //         tx.type === 'sell' &&
+  //         tx.tokenOutAddress?.toLowerCase() === tokenLower &&
+  //         tx.tokenInSymbol === baseTokenSymbol;
+
+  //       if (isBuy) {
+  //         // Process buy transaction
+  //         tokenData.tokenName = tx.tokenInName || 'Unknown';
+  //         tokenData.tokenSymbol = tx.tokenInSymbol || 'Unknown';
+  //         tokenData.totalBuys += 1;
+
+  //         const amountBought = Math.abs(parseFloat(tx.tokenInAmount) || 0);
+  //         const amountSpent = Math.abs(parseFloat(tx.tokenOutAmount) || 0);
+  //         const usdValue = Math.abs(parseFloat(tx.tokenInAmountUsd) || 0);
+
+  //         tokenData.totalTokenBought += amountBought;
+  //         tokenData.totalTokenBoughtUSD += usdValue;
+  //         tokenData.totalBaseTokenSpent += amountSpent;
+  //         tokenData.totalBaseTokenSpentUSD += Math.abs(
+  //           parseFloat(tx.tokenOutAmountUsd) || 0,
+  //         );
+  //         tokenData.totalCostBasisUSD += usdValue;
+  //         tokenData.buyTimeSum += (Date.now() - txTimestamp) / 1000;
+  //       } else if (isSell) {
+  //         // Process sell transaction
+  //         tokenData.tokenName = tx.tokenOutName || 'Unknown';
+  //         tokenData.tokenSymbol = tx.tokenOutSymbol || 'Unknown';
+  //         tokenData.totalSells += 1;
+
+  //         const amountSold = Math.abs(parseFloat(tx.tokenOutAmount) || 0);
+  //         const amountReceived = Math.abs(parseFloat(tx.tokenInAmount) || 0);
+  //         const usdValue = Math.abs(parseFloat(tx.tokenOutAmountUsd) || 0);
+
+  //         tokenData.totalTokenSold += amountSold;
+  //         tokenData.totalTokenSoldUSD += usdValue;
+  //         tokenData.totalBaseTokenReceived += amountReceived;
+  //         tokenData.totalBaseTokenReceivedUSD += Math.abs(
+  //           parseFloat(tx.tokenInAmountUsd) || 0,
+  //         );
+  //         tokenData.buyTimeSum += (Date.now() - txTimestamp) / 1000;
+  //       }
+  //     });
+
+  //     // Calculate derived metrics
+  //     const tradeCount = tokenData.totalBuys + tokenData.totalSells;
+  //     const tokenNetAmount =
+  //       tokenData.totalTokenBought - tokenData.totalTokenSold;
+
+  //     // Base Token PnL (WBNB/WETH)
+  //     const baseTokenPnl =
+  //       tokenData.totalBaseTokenReceived - tokenData.totalBaseTokenSpent;
+
+  //     // USD PnL Calculations
+  //     const soldProportion =
+  //       tokenData.totalTokenBought > 0
+  //         ? tokenData.totalTokenSold / tokenData.totalTokenBought
+  //         : 0;
+  //     const costBasisForSoldTokens =
+  //       tokenData.totalCostBasisUSD * soldProportion;
+  //     const realizedPnlUSD =
+  //       tokenData.totalTokenSoldUSD - costBasisForSoldTokens;
+
+  //     // Percentage calculations
+  //     const realizedPnlPercentage =
+  //       costBasisForSoldTokens > 0
+  //         ? (realizedPnlUSD / costBasisForSoldTokens) * 100
+  //         : 0;
+
+  //     return {
+  //       tokenAddress,
+  //       tokenName: tokenData.tokenName,
+  //       tokenSymbol: tokenData.tokenSymbol,
+  //       tradeCount,
+  //       totalBuys: tokenData.totalBuys,
+  //       totalSells: tokenData.totalSells,
+  //       totalBaseTokenSpent: tokenData.totalBaseTokenSpent.toFixed(6),
+  //       totalBaseTokenSpentUSD: tokenData.totalBaseTokenSpentUSD.toFixed(2),
+  //       totalTokenBought: tokenData.totalTokenBought.toFixed(6),
+  //       totalTokenBoughtUSD: tokenData.totalTokenBoughtUSD.toFixed(2),
+  //       totalTokenSold: tokenData.totalTokenSold.toFixed(6),
+  //       totalTokenSoldUSD: tokenData.totalTokenSoldUSD.toFixed(2),
+  //       totalBaseTokenReceived: tokenData.totalBaseTokenReceived.toFixed(6),
+  //       totalBaseTokenReceivedUSD:
+  //         tokenData.totalBaseTokenReceivedUSD.toFixed(2),
+  //       tokenNetAmount: tokenNetAmount.toFixed(6),
+  //       baseTokenPnl: baseTokenPnl.toFixed(6),
+  //       realizedPnlUSD: realizedPnlUSD.toFixed(2),
+  //       realizedPnlPercentage: parseFloat(realizedPnlPercentage.toFixed(2)),
+  //       avgBuyTimeSeconds: parseFloat(
+  //         (tokenData.totalBuys > 0
+  //           ? tokenData.buyTimeSum / tokenData.totalBuys
+  //           : 0
+  //         ).toFixed(2),
+  //       ),
+  //       avgSellTimeSeconds: parseFloat(
+  //         (tokenData.totalSells > 0
+  //           ? tokenData.sellTimeSum / tokenData.totalSells
+  //           : 0
+  //         ).toFixed(2),
+  //       ),
+  //     };
+  //   });
+  // }
+
+  async calculateUserTokensPnl(
+    wallet: string,
+    chain: string,
+    tokens: string[],
+    timeFilter: 'all' | '1' | '3' | '7' | '14' | '30' = 'all',
+  ): Promise<TokenPnlResult[]> {
+    // Validate inputs
+    if (!chain) throw new NotFoundException('Chain parameter is required');
+    if (!tokens?.length)
+      throw new NotFoundException('At least one token address is required');
+
+    // Determine base token symbol based on chain
+    const baseTokenSymbol = chain.toLowerCase() === 'bsc' ? 'WBNB' : 'WETH';
+
+    // Calculate cutoff date in ISO format if time filter is specified
+    const daysMap = { '1': 1, '3': 3, '7': 7, '14': 14, '30': 30 };
+    const cutoffDate =
+      timeFilter !== 'all'
+        ? new Date(
+            Date.now() - daysMap[timeFilter] * 24 * 60 * 60 * 1000,
+          ).toISOString()
+        : null;
+
+    // Build query with ISO timestamp filtering
+    const query: any = {
+      wallet: wallet.toLowerCase(),
+      chain: chain.toLowerCase(),
+      $or: [
+        { tokenOutAddress: { $in: tokens.map((t) => t.toLowerCase()) } },
+        { tokenInAddress: { $in: tokens.map((t) => t.toLowerCase()) } },
+      ],
+      ...(cutoffDate && { blockTimestamp: { $gte: cutoffDate } }),
+    };
+
+    // Fetch transactions from database
+    const transactions = await this.TransactionModel.find(query).exec();
+    if (!transactions.length) {
+      throw new NotFoundException(
+        `No transactions found for wallet ${wallet} on chain ${chain} for the specified tokens${timeFilter !== 'all' ? ` in the last ${daysMap[timeFilter]} days` : ''}`,
+      );
+    }
+
+    // Process transactions for each token
+    return tokens.map((tokenAddress) => {
+      const tokenLower = tokenAddress.toLowerCase();
+      const tokenTransactions = transactions.filter(
+        (tx) =>
+          tx.tokenInAddress?.toLowerCase() === tokenLower ||
+          tx.tokenOutAddress?.toLowerCase() === tokenLower,
+      );
+
+      const tokenData = {
+        tokenName: 'Unknown',
+        tokenSymbol: 'Unknown',
+        totalBuys: 0,
+        totalSells: 0,
+        totalBaseTokenSpent: 0,
+        totalBaseTokenSpentUSD: 0,
+        totalTokenBought: 0,
+        totalTokenBoughtUSD: 0,
+        totalTokenSold: 0,
+        totalTokenSoldUSD: 0,
+        totalBaseTokenReceived: 0,
+        totalBaseTokenReceivedUSD: 0,
+        totalCostBasisUSD: 0,
+        buyTimeSum: 0,
+        sellTimeSum: 0,
+      };
+
+      tokenTransactions.forEach((tx) => {
+        // Parse ISO timestamp to calculate holding periods
+        const txTimestamp = new Date(tx.blockTimestamp).getTime();
+        const isBuy =
+          tx.type === 'buy' &&
+          tx.tokenInAddress?.toLowerCase() === tokenLower &&
+          tx.tokenOutSymbol === baseTokenSymbol;
+
+        const isSell =
+          tx.type === 'sell' &&
+          tx.tokenOutAddress?.toLowerCase() === tokenLower &&
+          tx.tokenInSymbol === baseTokenSymbol;
+
+        if (isBuy) {
+          tokenData.tokenName = tx.tokenInName || 'Unknown';
+          tokenData.tokenSymbol = tx.tokenInSymbol || 'Unknown';
+          tokenData.totalBuys += 1;
+
+          const amountBought = Math.abs(parseFloat(tx.tokenInAmount) || 0);
+          const amountSpent = Math.abs(parseFloat(tx.tokenOutAmount) || 0);
+          const usdValue = Math.abs(parseFloat(tx.tokenInAmountUsd) || 0);
+
+          tokenData.totalTokenBought += amountBought;
+          tokenData.totalTokenBoughtUSD += usdValue;
+          tokenData.totalBaseTokenSpent += amountSpent;
+          tokenData.totalBaseTokenSpentUSD += Math.abs(
+            parseFloat(tx.tokenOutAmountUsd) || 0,
+          );
+          tokenData.totalCostBasisUSD += usdValue;
+          tokenData.buyTimeSum += (Date.now() - txTimestamp) / 1000;
+        } else if (isSell) {
+          tokenData.tokenName = tx.tokenOutName || 'Unknown';
+          tokenData.tokenSymbol = tx.tokenOutSymbol || 'Unknown';
+          tokenData.totalSells += 1;
+
+          const amountSold = Math.abs(parseFloat(tx.tokenOutAmount) || 0);
+          const amountReceived = Math.abs(parseFloat(tx.tokenInAmount) || 0);
+          const usdValue = Math.abs(parseFloat(tx.tokenOutAmountUsd) || 0);
+
+          tokenData.totalTokenSold += amountSold;
+          tokenData.totalTokenSoldUSD += usdValue;
+          tokenData.totalBaseTokenReceived += amountReceived;
+          tokenData.totalBaseTokenReceivedUSD += Math.abs(
+            parseFloat(tx.tokenInAmountUsd) || 0,
+          );
+          tokenData.sellTimeSum += (Date.now() - txTimestamp) / 1000;
+        }
+      });
+
+      // Calculate derived metrics
+      const tradeCount = tokenData.totalBuys + tokenData.totalSells;
+      const tokenNetAmount =
+        tokenData.totalTokenBought - tokenData.totalTokenSold;
+
+      // Base Token PnL (WBNB/WETH)
+      const baseTokenPnl =
+        tokenData.totalBaseTokenReceived - tokenData.totalBaseTokenSpent;
+
+      // USD PnL Calculations
+      const soldProportion =
+        tokenData.totalTokenBought > 0
+          ? tokenData.totalTokenSold / tokenData.totalTokenBought
+          : 0;
+      const costBasisForSoldTokens =
+        tokenData.totalCostBasisUSD * soldProportion;
+      const realizedPnlUSD =
+        tokenData.totalTokenSoldUSD - costBasisForSoldTokens;
+
+      // Percentage calculations
+      const realizedPnlPercentage =
+        costBasisForSoldTokens > 0
+          ? (realizedPnlUSD / costBasisForSoldTokens) * 100
+          : 0;
+
+      return {
+        tokenAddress,
+        tokenName: tokenData.tokenName,
+        tokenSymbol: tokenData.tokenSymbol,
+        tradeCount,
+        totalBuys: tokenData.totalBuys,
+        totalSells: tokenData.totalSells,
+        totalBaseTokenSpent: tokenData.totalBaseTokenSpent.toFixed(6),
+        totalBaseTokenSpentUSD: tokenData.totalBaseTokenSpentUSD.toFixed(2),
+        totalTokenBought: tokenData.totalTokenBought.toFixed(6),
+        totalTokenBoughtUSD: tokenData.totalTokenBoughtUSD.toFixed(2),
+        totalTokenSold: tokenData.totalTokenSold.toFixed(6),
+        totalTokenSoldUSD: tokenData.totalTokenSoldUSD.toFixed(2),
+        totalBaseTokenReceived: tokenData.totalBaseTokenReceived.toFixed(6),
+        totalBaseTokenReceivedUSD:
+          tokenData.totalBaseTokenReceivedUSD.toFixed(2),
+        tokenNetAmount: tokenNetAmount.toFixed(6),
+        baseTokenPnl: baseTokenPnl.toFixed(6),
+        realizedPnlUSD: realizedPnlUSD.toFixed(2),
+        realizedPnlPercentage: parseFloat(realizedPnlPercentage.toFixed(2)),
+        avgBuyTimeSeconds: parseFloat(
+          (tokenData.totalBuys > 0
+            ? tokenData.buyTimeSum / tokenData.totalBuys
+            : 0
+          ).toFixed(2),
+        ),
+        avgSellTimeSeconds: parseFloat(
+          (tokenData.totalSells > 0
+            ? tokenData.sellTimeSum / tokenData.totalSells
+            : 0
+          ).toFixed(2),
+        ),
+      };
+    });
+  }
 
   async getUserTopHoldings(
     wallet: string,
@@ -1056,75 +1355,272 @@ export class UserService {
     }
   }
 
+  // async getDbPnlLeaderBoard(
+  //   chain?: string,
+  //   days: 'all' | '1' | '3' | '7' | '14' | '30' = 'all',
+  // ): Promise<
+  //   {
+  //     name: string;
+  //     wallet: string;
+  //     twitter: string;
+  //     telegram: string;
+  //     website: string;
+  //     chains: string[];
+  //     imageUrl: string;
+  //     pnlSummary: {
+  //       totalTradesCount: number;
+  //       totalPnlUSD: string;
+  //       totalPnlPercentage: number;
+  //       totalBuys: number;
+  //       totalSells: number;
+  //       totalBuysUSD: string;
+  //       totalSellsUSD: string;
+  //     };
+  //   }[]
+  // > {
+  //   try {
+  //     const users = await this.UserModel.find().exec();
+  //     if (!users || users.length === 0) {
+  //       console.log('No users found');
+  //       return [];
+  //     }
+
+  //     const defaultPnlSummary = {
+  //       totalTradesCount: 0,
+  //       totalPnlUSD: '0.00',
+  //       totalPnlPercentage: 0,
+  //       totalBuys: 0,
+  //       totalSells: 0,
+  //       totalBuysUSD: '0.00',
+  //       totalSellsUSD: '0.00',
+  //     };
+
+  //     const daysMap = { '1': 1, '3': 3, '7': 7, '14': 14, '30': 30 };
+  //     const dayCount = daysMap[days];
+  //     const timeFilter =
+  //       days === 'all' ? 'all' : (days as '1' | '3' | '7' | '14' | '30');
+
+  //     const WETH_PRICE = 2000; // Placeholder, replace with actual price source
+
+  //     const pnlPromises = users.map(async (user) => {
+  //       const tokenAddresses = [
+  //         ...new Set(
+  //           (
+  //             await this.TransactionModel.find({
+  //               wallet: user.wallet.toLowerCase(),
+  //               chain,
+  //               ...(days !== 'all' && {
+  //                 blockTimestamp: {
+  //                   $gte: new Date(Date.now() - dayCount * 24 * 60 * 60 * 1000),
+  //                 },
+  //               }),
+  //             }).exec()
+  //           )
+  //             .map((tx) => [tx.tokenInAddress, tx.tokenOutAddress])
+  //             .flat()
+  //             .filter((addr): addr is string => !!addr)
+  //             .map((addr) => addr.toLowerCase()),
+  //         ),
+  //       ];
+
+  //       if (tokenAddresses.length === 0) {
+  //         return {
+  //           name: user.name || 'Unknown',
+  //           wallet: user.wallet,
+  //           twitter: user.twitter || '',
+  //           telegram: user.telegram || '',
+  //           website: user.website || '',
+  //           chains: user.chains || [],
+  //           imageUrl: user.imageUrl || '',
+  //           pnlSummary: defaultPnlSummary,
+  //         };
+  //       }
+
+  //       const tokenPnls = await this.calculateUserTokensPnl(
+  //         user.wallet,
+  //         chain,
+  //         tokenAddresses,
+  //         timeFilter,
+  //       );
+
+  //       const pnlSummary = tokenPnls.reduce(
+  //         (acc, tokenPnl) => {
+  //           // Ensure valid parsing with fallback to 0
+  //           const pnlUSD = parseFloat(tokenPnl.pnlUSD) || 0;
+  //           const buyAmount = parseFloat(tokenPnl.totalBuyTokenAmount) || 0;
+  //           const sellAmount = parseFloat(tokenPnl.totalSellTokenAmount) || 0;
+
+  //           // Assuming amounts are in ETH (adjust if in wei)
+  //           const buyAmountEth = buyAmount; // Remove / 1e18 if already in ETH
+  //           const sellAmountEth = sellAmount;
+
+  //           acc.totalTradesCount += tokenPnl.tradeCount;
+  //           acc.totalBuys += tokenPnl.totalBuys;
+  //           acc.totalSells += tokenPnl.totalSells;
+  //           acc.totalBuysUSD += buyAmountEth * WETH_PRICE;
+  //           acc.totalSellsUSD += sellAmountEth * WETH_PRICE;
+  //           acc.totalPnlUSD += pnlUSD;
+
+  //           return acc;
+  //         },
+  //         {
+  //           totalTradesCount: 0,
+  //           totalBuys: 0,
+  //           totalSells: 0,
+  //           totalBuysUSD: 0,
+  //           totalSellsUSD: 0,
+  //           totalPnlUSD: 0,
+  //           totalPnlPercentage: 0,
+  //         },
+  //       );
+
+  //       // Calculate percentage only if there’s a basis (buys USD)
+  //       pnlSummary.totalPnlPercentage =
+  //         pnlSummary.totalBuysUSD !== 0
+  //           ? (pnlSummary.totalPnlUSD / pnlSummary.totalBuysUSD) * 100
+  //           : 0;
+
+  //       // Debugging log
+  //       console.log(`User: ${user.wallet}, Token PNLs:`, tokenPnls);
+  //       console.log(
+  //         `User: ${user.wallet}, Aggregated PNL Summary:`,
+  //         pnlSummary,
+  //       );
+
+  //       return {
+  //         name: user.name || 'Unknown',
+  //         wallet: user.wallet,
+  //         twitter: user.twitter || '',
+  //         telegram: user.telegram || '',
+  //         website: user.website || '',
+  //         chains: user.chains || [],
+  //         imageUrl: user.imageUrl || '',
+  //         pnlSummary: {
+  //           totalTradesCount: pnlSummary.totalTradesCount,
+  //           totalPnlUSD: isNaN(pnlSummary.totalPnlUSD)
+  //             ? '0.00'
+  //             : pnlSummary.totalPnlUSD.toFixed(2),
+  //           totalPnlPercentage: isNaN(pnlSummary.totalPnlPercentage)
+  //             ? 0
+  //             : parseFloat(pnlSummary.totalPnlPercentage.toFixed(2)),
+  //           totalBuys: pnlSummary.totalBuys,
+  //           totalSells: pnlSummary.totalSells,
+  //           totalBuysUSD: isNaN(pnlSummary.totalBuysUSD)
+  //             ? '0.00'
+  //             : pnlSummary.totalBuysUSD.toFixed(2),
+  //           totalSellsUSD: isNaN(pnlSummary.totalSellsUSD)
+  //             ? '0.00'
+  //             : pnlSummary.totalSellsUSD.toFixed(2),
+  //         },
+  //       };
+  //     });
+
+  //     const leaderboard = await Promise.all(pnlPromises);
+  //     const filteredLeaderboard = leaderboard.filter(
+  //       (entry) => entry.pnlSummary.totalTradesCount > 0,
+  //     );
+
+  //     filteredLeaderboard.sort((a, b) => {
+  //       const pnlA = parseFloat(a.pnlSummary.totalPnlUSD);
+  //       const pnlB = parseFloat(b.pnlSummary.totalPnlUSD);
+  //       return pnlB - pnlA; // Descending order
+  //     });
+
+  //     return filteredLeaderboard;
+  //   } catch (error: any) {
+  //     console.error('Error fetching PNL leaderboard:', error.message || error);
+  //     throw error;
+  //   }
+  // }
+
   async getDbPnlLeaderBoard(
     chain?: string,
-    days: 'all' | '1' | '3' | '7' | '14' | '30' = 'all',
-  ): Promise<
-    {
-      name: string;
-      wallet: string;
-      twitter: string;
-      telegram: string;
-      website: string;
-      chains: string[];
-      imageUrl: string;
-      pnlSummary: {
-        totalTradesCount: number;
-        totalPnlUSD: string;
-        totalPnlPercentage: number;
-        totalBuys: number;
-        totalSells: number;
-        totalBuysUSD: string;
-        totalSellsUSD: string;
-      };
-    }[]
-  > {
+    timeFilter: 'all' | '1' | '3' | '7' | '14' | '30' = 'all',
+  ): Promise<PnlLeaderboardEntry[]> {
     try {
       const users = await this.UserModel.find().exec();
-      if (!users || users.length === 0) {
-        console.log('No users found');
-        return [];
-      }
+      if (!users?.length) return [];
 
-      const defaultPnlSummary = {
-        totalTradesCount: 0,
-        totalPnlUSD: '0.00',
-        totalPnlPercentage: 0,
-        totalBuys: 0,
-        totalSells: 0,
-        totalBuysUSD: '0.00',
-        totalSellsUSD: '0.00',
-      };
+      const cutoffDate = this.getCutoffDate(timeFilter);
 
-      const daysMap = { '1': 1, '3': 3, '7': 7, '14': 14, '30': 30 };
-      const dayCount = daysMap[days];
-      const timeFilter =
-        days === 'all' ? 'all' : (days as '1' | '3' | '7' | '14' | '30');
+      const leaderboardEntries = await Promise.all(
+        users.map(async (user) => {
+          // Find all transactions for this user and time period
+          const transactions = await this.TransactionModel.find({
+            wallet: user.wallet.toLowerCase(),
+            ...(chain && { chain: chain.toLowerCase() }),
+            ...(cutoffDate && { blockTimestamp: { $gte: cutoffDate } }),
+          }).exec();
 
-      const WETH_PRICE = 2000; // Placeholder, replace with actual price source
+          if (!transactions.length) {
+            return this.createEmptyLeaderboardEntry(user);
+          }
 
-      const pnlPromises = users.map(async (user) => {
-        const tokenAddresses = [
-          ...new Set(
-            (
-              await this.TransactionModel.find({
-                wallet: user.wallet.toLowerCase(),
-                chain,
-                ...(days !== 'all' && {
-                  blockTimestamp: {
-                    $gte: new Date(Date.now() - dayCount * 24 * 60 * 60 * 1000),
-                  },
-                }),
-              }).exec()
-            )
-              .map((tx) => [tx.tokenInAddress, tx.tokenOutAddress])
-              .flat()
-              .filter((addr): addr is string => !!addr)
-              .map((addr) => addr.toLowerCase()),
-          ),
-        ];
+          // Get unique token addresses from transactions
+          const tokenAddresses = [
+            ...new Set(
+              transactions
+                .flatMap((tx) => [tx.tokenInAddress, tx.tokenOutAddress])
+                .filter((addr): addr is string => !!addr)
+                .map((addr) => addr.toLowerCase()),
+            ),
+          ];
 
-        if (tokenAddresses.length === 0) {
+          // Calculate PnL for each token
+          const tokenPnls = await this.calculateUserTokensPnl(
+            user.wallet,
+            chain || user.chains[0],
+            tokenAddresses,
+            timeFilter,
+          );
+
+          // Aggregate statistics
+          const stats = tokenPnls.reduce(
+            (acc, tokenPnl) => {
+              const baseTokenPnl = parseFloat(tokenPnl.baseTokenPnl) || 0;
+              const baseTokenPnlUSD = parseFloat(tokenPnl.realizedPnlUSD) || 0;
+
+              acc.totalTrades += tokenPnl.tradeCount;
+              acc.totalBuys += tokenPnl.totalBuys;
+              acc.totalSells += tokenPnl.totalSells;
+
+              if (baseTokenPnl > 0) {
+                acc.profitableTrades++;
+                acc.totalBaseTokenGained += baseTokenPnl;
+                acc.totalBaseTokenGainedUSD += baseTokenPnlUSD;
+              } else if (baseTokenPnl < 0) {
+                acc.losingTrades++;
+                acc.totalBaseTokenLost += Math.abs(baseTokenPnl);
+                acc.totalBaseTokenLostUSD += Math.abs(baseTokenPnlUSD);
+              }
+
+              return acc;
+            },
+            {
+              totalTrades: 0,
+              profitableTrades: 0,
+              losingTrades: 0,
+              totalBuys: 0,
+              totalSells: 0,
+              totalBaseTokenGained: 0,
+              totalBaseTokenGainedUSD: 0,
+              totalBaseTokenLost: 0,
+              totalBaseTokenLostUSD: 0,
+            },
+          );
+
+          // Calculate net PnL
+          const netBaseTokenPnl =
+            stats.totalBaseTokenGained - stats.totalBaseTokenLost;
+          const netBaseTokenPnlUSD =
+            stats.totalBaseTokenGainedUSD - stats.totalBaseTokenLostUSD;
+          const totalInvestment =
+            stats.totalBaseTokenLostUSD + stats.totalBaseTokenGainedUSD;
+          const pnlPercentage =
+            totalInvestment > 0
+              ? (netBaseTokenPnlUSD / totalInvestment) * 100
+              : 0;
+
           return {
             name: user.name || 'Unknown',
             wallet: user.wallet,
@@ -1133,233 +1629,60 @@ export class UserService {
             website: user.website || '',
             chains: user.chains || [],
             imageUrl: user.imageUrl || '',
-            pnlSummary: defaultPnlSummary,
+            pnlSummary: {
+              totalTradesCount: stats.totalTrades,
+              profitableTrades: stats.profitableTrades,
+              losingTrades: stats.losingTrades,
+              totalBaseTokenGained: stats.totalBaseTokenGained.toFixed(6),
+              totalBaseTokenGainedUSD: stats.totalBaseTokenGainedUSD.toFixed(2),
+              totalBaseTokenLost: stats.totalBaseTokenLost.toFixed(6),
+              totalBaseTokenLostUSD: stats.totalBaseTokenLostUSD.toFixed(2),
+              netBaseTokenPnl: netBaseTokenPnl.toFixed(6),
+              netBaseTokenPnlUSD: netBaseTokenPnlUSD.toFixed(2),
+              totalPnlPercentage: parseFloat(pnlPercentage.toFixed(2)),
+              totalBuys: stats.totalBuys,
+              totalSells: stats.totalSells,
+            },
           };
-        }
-
-        const tokenPnls = await this.calculateUserTokensPnl(
-          user.wallet,
-          chain,
-          tokenAddresses,
-          timeFilter,
-        );
-
-        const pnlSummary = tokenPnls.reduce(
-          (acc, tokenPnl) => {
-            // Ensure valid parsing with fallback to 0
-            const pnlUSD = parseFloat(tokenPnl.pnlUSD) || 0;
-            const buyAmount = parseFloat(tokenPnl.totalBuyTokenAmount) || 0;
-            const sellAmount = parseFloat(tokenPnl.totalSellTokenAmount) || 0;
-
-            // Assuming amounts are in ETH (adjust if in wei)
-            const buyAmountEth = buyAmount; // Remove / 1e18 if already in ETH
-            const sellAmountEth = sellAmount;
-
-            acc.totalTradesCount += tokenPnl.tradeCount;
-            acc.totalBuys += tokenPnl.totalBuys;
-            acc.totalSells += tokenPnl.totalSells;
-            acc.totalBuysUSD += buyAmountEth * WETH_PRICE;
-            acc.totalSellsUSD += sellAmountEth * WETH_PRICE;
-            acc.totalPnlUSD += pnlUSD;
-
-            return acc;
-          },
-          {
-            totalTradesCount: 0,
-            totalBuys: 0,
-            totalSells: 0,
-            totalBuysUSD: 0,
-            totalSellsUSD: 0,
-            totalPnlUSD: 0,
-            totalPnlPercentage: 0,
-          },
-        );
-
-        // Calculate percentage only if there’s a basis (buys USD)
-        pnlSummary.totalPnlPercentage =
-          pnlSummary.totalBuysUSD !== 0
-            ? (pnlSummary.totalPnlUSD / pnlSummary.totalBuysUSD) * 100
-            : 0;
-
-        // Debugging log
-        console.log(`User: ${user.wallet}, Token PNLs:`, tokenPnls);
-        console.log(
-          `User: ${user.wallet}, Aggregated PNL Summary:`,
-          pnlSummary,
-        );
-
-        return {
-          name: user.name || 'Unknown',
-          wallet: user.wallet,
-          twitter: user.twitter || '',
-          telegram: user.telegram || '',
-          website: user.website || '',
-          chains: user.chains || [],
-          imageUrl: user.imageUrl || '',
-          pnlSummary: {
-            totalTradesCount: pnlSummary.totalTradesCount,
-            totalPnlUSD: isNaN(pnlSummary.totalPnlUSD)
-              ? '0.00'
-              : pnlSummary.totalPnlUSD.toFixed(2),
-            totalPnlPercentage: isNaN(pnlSummary.totalPnlPercentage)
-              ? 0
-              : parseFloat(pnlSummary.totalPnlPercentage.toFixed(2)),
-            totalBuys: pnlSummary.totalBuys,
-            totalSells: pnlSummary.totalSells,
-            totalBuysUSD: isNaN(pnlSummary.totalBuysUSD)
-              ? '0.00'
-              : pnlSummary.totalBuysUSD.toFixed(2),
-            totalSellsUSD: isNaN(pnlSummary.totalSellsUSD)
-              ? '0.00'
-              : pnlSummary.totalSellsUSD.toFixed(2),
-          },
-        };
-      });
-
-      const leaderboard = await Promise.all(pnlPromises);
-      const filteredLeaderboard = leaderboard.filter(
-        (entry) => entry.pnlSummary.totalTradesCount > 0,
+        }),
       );
 
-      filteredLeaderboard.sort((a, b) => {
-        const pnlA = parseFloat(a.pnlSummary.totalPnlUSD);
-        const pnlB = parseFloat(b.pnlSummary.totalPnlUSD);
-        return pnlB - pnlA; // Descending order
+      // Sort by netBaseTokenPnlUSD (highest to lowest)
+      return leaderboardEntries.sort((a, b) => {
+        const netA = parseFloat(a.pnlSummary.netBaseTokenPnlUSD);
+        const netB = parseFloat(b.pnlSummary.netBaseTokenPnlUSD);
+        return netB - netA; // Descending order
       });
-
-      return filteredLeaderboard;
-    } catch (error: any) {
-      console.error('Error fetching PNL leaderboard:', error.message || error);
-      throw error;
+    } catch (error) {
+      console.error('Error generating PnL leaderboard:', error);
+      throw new Error('Failed to generate leaderboard');
     }
   }
 
-  // async calculateUserTokensPnl(
-  //   wallet: string,
-  //   chain,
-  //   tokens: string[],
-  // ): Promise<
-  //   {
-  //     tokenAddress: string;
-  //     tokenName: string;
-  //     tokenSymbol: string;
-  //     tradeCount: number;
-  //     totalBuys: number;
-  //     totalSells: number;
-  //     totalTokenBought: string;
-  //     totalTokenBoughtUSD: string;
-  //     totalTokenSold: string;
-  //     totalTokenSoldUSD: string;
-  //     pnlUSD: string;
-  //     pnlPercentage: number;
-  //   }[]
-  // > {
-  //   try {
-  //     // Fetch all BSC transactions for the given wallet
-  //     const transactions = await this.TransactionModel.find({
-  //       wallet: wallet.toLowerCase(),
-  //       chain: 'bsc',
-  //     }).exec();
-
-  //     if (!transactions || transactions.length === 0) {
-  //       throw new NotFoundException(
-  //         `No BSC transactions found for wallet ${wallet}`,
-  //       );
-  //     }
-
-  //     // Group transactions by token and calculate PNL
-  //     const tokenMap: {
-  //       [key: string]: {
-  //         tokenName: string;
-  //         tokenSymbol: string;
-  //         totalBuys: number;
-  //         totalSells: number;
-  //         totalTokenBought: string;
-  //         totalTokenBoughtUSD: string;
-  //         totalTokenSold: string;
-  //         totalTokenSoldUSD: string;
-  //       };
-  //     } = {};
-
-  //     transactions.forEach((tx) => {
-  //       // Handle token out (sell)
-  //       if (tx.tokenOutAddress) {
-  //         const tokenAddress = tx.tokenOutAddress.toLowerCase();
-  //         if (!tokenMap[tokenAddress]) {
-  //           tokenMap[tokenAddress] = {
-  //             tokenName: tx.tokenOutName || 'Unknown',
-  //             tokenSymbol: tx.tokenOutSymbol || 'Unknown',
-  //             totalBuys: 0,
-  //             totalSells: 0,
-  //             totalTokenBought: '0',
-  //             totalTokenBoughtUSD: '0',
-  //             totalTokenSold: '0',
-  //             totalTokenSoldUSD: '0',
-  //           };
-  //         }
-  //         const amount = parseFloat(tx.tokenOutAmount) || 0;
-  //         const usd = parseFloat(tx.tokenOutAmountUsd) || 0;
-  //         tokenMap[tokenAddress].totalSells += 1;
-  //         tokenMap[tokenAddress].totalTokenSold += amount;
-  //         tokenMap[tokenAddress].totalTokenSoldUSD += usd;
-  //       }
-
-  //       // Handle token in (buy)
-  //       if (tx.tokenInAddress) {
-  //         const tokenAddress = tx.tokenInAddress.toLowerCase();
-  //         if (!tokenMap[tokenAddress]) {
-  //           tokenMap[tokenAddress] = {
-  //             tokenName: tx.tokenInName || 'Unknown',
-  //             tokenSymbol: tx.tokenInSymbol || 'Unknown',
-  //             totalBuys: 0,
-  //             totalSells: 0,
-  //             totalTokenBought: '0',
-  //             totalTokenBoughtUSD: '0',
-  //             totalTokenSold: '0',
-  //             totalTokenSoldUSD: '0',
-  //           };
-  //         }
-  //         const amount = parseFloat(tx.tokenInAmount) || 0;
-  //         const usd = parseFloat(tx.tokenInAmountUsd) || 0;
-  //         tokenMap[tokenAddress].totalBuys += 1;
-  //         tokenMap[tokenAddress].totalTokenBought += amount;
-  //         tokenMap[tokenAddress].totalTokenBoughtUSD += usd;
-  //       }
-  //     });
-
-  //     // Convert tokenMap to array and calculate PNL
-  //     const pnlResults = Object.keys(tokenMap).map((tokenAddress) => {
-  //       const token = tokenMap[tokenAddress];
-  //       const pnlUSD =
-  //         Number(token.totalTokenSoldUSD) - Number(token.totalTokenBoughtUSD);
-  //       const pnlPercentage =
-  //         Number(token.totalTokenBoughtUSD) !== 0
-  //           ? (pnlUSD / Number(token.totalTokenBoughtUSD)) * 100
-  //           : 0;
-  //       return {
-  //         tokenAddress,
-  //         tokenName: token.tokenName,
-  //         tokenSymbol: token.tokenSymbol,
-  //         tradeCount: token.totalBuys + token.totalSells,
-  //         totalBuys: token.totalBuys,
-  //         totalSells: token.totalSells,
-  //         totalTokenBought: token.totalTokenBought,
-  //         totalTokenBoughtUSD: token.totalTokenBoughtUSD,
-  //         totalTokenSold: token.totalTokenSold,
-  //         totalTokenSoldUSD: token.totalTokenSoldUSD,
-  //         pnlUSD: `${pnlUSD}`,
-  //         pnlPercentage,
-  //       };
-  //     });
-
-  //     // Filter out tokens with no activity (optional)
-  //     return pnlResults.filter(
-  //       (result) => result.totalBuys > 0 || result.totalSells > 0,
-  //     );
-  //   } catch (error: any) {
-  //     console.error('Error calculating BSC token PNL:', error.message || error);
-  //     throw error;
-  //   }
+  // private createEmptyLeaderboardEntry(user: any): PnlLeaderboardEntry {
+  //   return {
+  //     name: user.name || 'Unknown',
+  //     wallet: user.wallet,
+  //     twitter: user.twitter || '',
+  //     telegram: user.telegram || '',
+  //     website: user.website || '',
+  //     chains: user.chains || [],
+  //     imageUrl: user.imageUrl || '',
+  //     pnlSummary: {
+  //       totalTradesCount: 0,
+  //       profitableTrades: 0,
+  //       losingTrades: 0,
+  //       totalBaseTokenGained: '0.000000',
+  //       totalBaseTokenGainedUSD: '0.00',
+  //       totalBaseTokenLost: '0.000000',
+  //       totalBaseTokenLostUSD: '0.00',
+  //       netBaseTokenPnl: '0.000000',
+  //       netBaseTokenPnlUSD: '0.00',
+  //       totalPnlPercentage: 0,
+  //       totalBuys: 0,
+  //       totalSells: 0,
+  //     },
+  //   };
   // }
 
   async seedDatabase(): Promise<void> {

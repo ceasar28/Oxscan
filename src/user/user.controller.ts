@@ -16,6 +16,53 @@ import { UserService } from './user.service'; // Adjust path
 import { UserDto } from './dto/user.dto'; // Adjust path
 import { TransactionDto } from '../socket/dto/transaction.dto'; // Adjust path based on your structure
 
+interface TokenPnlResult {
+  tokenAddress: string;
+  tokenName: string;
+  tokenSymbol: string;
+  tradeCount: number;
+  totalBuys: number;
+  totalSells: number;
+  totalBaseTokenSpent: string; // WBNB/WETH spent to buy
+  totalBaseTokenSpentUSD: string; // USD value of base token spent
+  totalTokenBought: string; // Total tokens bought
+  totalTokenBoughtUSD: string; // USD value of tokens bought
+  totalTokenSold: string; // Total tokens sold
+  totalTokenSoldUSD: string; // USD value of tokens sold
+  totalBaseTokenReceived: string; // WBNB/WETH received from selling
+  totalBaseTokenReceivedUSD: string; // USD value of base token received
+  tokenNetAmount: string; // (Bought - Sold) token balance
+  baseTokenPnl: string; // Profit/Loss in base token (WBNB/WETH)
+  realizedPnlUSD: string; // Profit/Loss in USD
+  realizedPnlPercentage: number; // Percentage gain/loss
+  avgBuyTimeSeconds: number;
+  avgSellTimeSeconds: number;
+}
+
+interface PnlLeaderboardEntry {
+  name: string;
+  wallet: string;
+  twitter: string;
+  telegram: string;
+  website: string;
+  chains: string[];
+  imageUrl: string;
+  pnlSummary: {
+    totalTradesCount: number;
+    profitableTrades: number;
+    losingTrades: number;
+    totalBaseTokenGained: string; // Net WETH/WBNB gained
+    totalBaseTokenGainedUSD: string;
+    totalBaseTokenLost: string; // Net WETH/WBNB lost
+    totalBaseTokenLostUSD: string;
+    netBaseTokenPnl: string; // (Gained - Lost)
+    netBaseTokenPnlUSD: string;
+    totalPnlPercentage: number;
+    totalBuys: number;
+    totalSells: number;
+  };
+}
+
 @Controller('user')
 export class UserController {
   constructor(private readonly userService: UserService) {}
@@ -115,26 +162,7 @@ export class UserController {
     @Query('chain') chain: string,
     @Query('duration')
     timeFilter: 'all' | '1' | '3' | '7' | '14' | '30' = 'all',
-  ): Promise<
-    {
-      name: string;
-      wallet: string;
-      twitter: string;
-      telegram: string;
-      website: string;
-      chains: string[];
-      imageUrl: string;
-      pnlSummary: {
-        totalTradesCount: number;
-        totalPnlUSD: string;
-        totalPnlPercentage: number;
-        totalBuys: number;
-        totalSells: number;
-        totalBuysUSD: string;
-        totalSellsUSD: string;
-      };
-    }[]
-  > {
+  ): Promise<PnlLeaderboardEntry[]> {
     if (!chain) {
       throw new BadRequestException('Chain parameter is required');
     }
@@ -187,29 +215,7 @@ export class UserController {
     @Query('tokens') tokens: string, // Expecting a comma-separated string of token addresses
     @Query('duration')
     timeFilter: 'all' | '1' | '3' | '7' | '14' | '30' = 'all',
-  ): Promise<
-    {
-      tokenAddress: string;
-      tokenName: string;
-      tokenSymbol: string;
-      tradeCount: number;
-      totalBuys: number;
-      totalSells: number;
-      totalBuyTokenAmount: string;
-      buyTokenName: string;
-      buyTokenSymbol: string;
-      totalBuyTokenAmountUSD: string; // New field
-      totalSellTokenAmount: string;
-      sellTokenName: string;
-      sellTokenSymbol: string;
-      totalSellTokenAmountUSD: string; // New field
-      tokenNetAmount: string;
-      pnlUSD: string;
-      pnlPercentage: number;
-      avgBuyTimeSeconds: number;
-      avgSellTimeSeconds: number;
-    }[]
-  > {
+  ): Promise<TokenPnlResult[]> {
     if (!chain) {
       throw new BadRequestException('Chain parameter is required');
     }
